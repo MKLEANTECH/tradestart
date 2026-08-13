@@ -1178,11 +1178,16 @@ body.phone-widget-active #lean-sdk-iframe {
 <script>
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────
-const BACKEND      = "http://localhost:3000";
+// Derived from window.location rather than hardcoded — this page is always
+// served BY the same Express server that hosts the API (see server.js's
+// express.static), so "wherever this page loaded from" IS the backend.
+// Hardcoding localhost:3000 here broke the moment this got deployed anywhere
+// else: every visitor's browser would try to reach ITS OWN localhost:3000,
+// not the real server. Works locally, on Render, or anywhere else unchanged.
+const BACKEND      = window.location.origin;
 const APP_TOKEN     = "bf283b92-6f2f-4488-ace6-d89491ca2d52";
 const PAYMENT_DESTINATION_ID = "342ad057-2edf-4b3f-87cc-6991e8f74c6c";
-// Single place to update the ngrok URL each session (was duplicated 3x before).
-const REDIRECT_BASE = "https://clique-shortness-sedate.ngrok-free.dev/index.html";
+const REDIRECT_BASE = window.location.origin + "/index.html";
 
 // ─── API ACTIVITY LOGGER ────────────────────────────────────────────────────
 // Wraps window.fetch so every request this page makes — regardless of which
