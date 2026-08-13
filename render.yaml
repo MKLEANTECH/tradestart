@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: tradestart
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: LEAN_APP_TOKEN
+        sync: false
+      - key: LEAN_CLIENT_SECRET
+        sync: false
+      - key: LEAN_AUTH_BASE_URL
+        sync: false
+      - key: LEAN_API_BASE_URL
+        sync: false
+      - key: LEAN_PAYMENT_DESTINATION_ID
+        sync: false
+      - key: LEAN_PAYOUT_SOURCE_ID
+        sync: false
+      - key: LEAN_PAYOUT_DESTINATION_ID
+        sync: false
