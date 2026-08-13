@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TradeStart – Redirecting…</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:    #0b0f19;
+    --card:  #1c2438;
+    --gold:  #f0b429;
+    --green: #22c55e;
+    --red:   #ef4444;
+    --text:  #f0f4ff;
+    --mid:   #8892a4;
+  }
+  body {
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    padding: 2rem;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 2.5rem;
+  }
+  .logo-mark {
+    width: 36px; height: 36px;
+    background: var(--gold);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .icon {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px;
+    margin: 0 auto 1.25rem;
+  }
+  .icon.success { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.25); }
+  .icon.failure { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.25); }
+  .icon.loading { background: rgba(240,180,41,0.1); border: 1px solid rgba(240,180,41,0.25); }
+  h2 { font-size: 22px; font-weight: 700; margin-bottom: 0.6rem; }
+  p  { font-size: 14px; color: var(--mid); line-height: 1.6; margin-bottom: 1.5rem; }
+  .params {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--mid);
+    text-align: left;
+    margin-bottom: 1.5rem;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+  .params div { margin-bottom: 3px; }
+  .params span.k { color: #6b7280; }
+  .params span.v { color: var(--gold); }
+  .btn {
+    display: inline-block;
+    padding: 12px 28px;
+    background: var(--gold);
+    color: #0b0f19;
+    font-weight: 700;
+    font-size: 15px;
+    border-radius: 8px;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #e8ab24; }
+  .spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid rgba(240,180,41,0.3);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-bottom: 1rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="logo-mark">⚡</div>
+  TradeStart
+</div>
+
+<div class="card" id="card">
+  <!-- filled by JS -->
+</div>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const card   = document.getElementById("card");
+const isSuccess = window.location.pathname.includes("success") ||
+                  params.get("status") === "SUCCESS";
+
+// ── Parse all query params for display ──────────────────────────────────────
+const relevant = ["status", "granular_status_code", "consent_attempt_id",
+                  "consent_id", "status_additional_info"];
+
+function renderParams() {
+  const rows = relevant
+    .filter(k => params.has(k))
+    .map(k => `<div><span class="k">${k}:</span> <span class="v">${params.get(k)}</span></div>`)
+    .join("");
+  return rows ? `<div class="params">${rows}</div>` : "";
+}
+
+if (isSuccess) {
+  card.innerHTML = `
+    <div class="icon success">✓</div>
+    <h2 style="color: var(--green)">Authorization Successful</h2>
+    <p>Your Open Finance consent has been authorized. You can now close this tab and return to TradeStart to complete your deposit.</p>
+    ${renderParams()}
+    <button class="btn" onclick="window.close()">Close this tab</button>
+  `;
+} else {
+  const code = params.get("granular_status_code") || params.get("status") || "UNKNOWN";
+  card.innerHTML = `
+    <div class="icon failure">✕</div>
+    <h2 style="color: var(--red)">Authorization Failed</h2>
+    <p>Something went wrong during the Open Finance consent flow. Please return to TradeStart and try again.</p>
+    ${renderParams()}
+    <button class="btn" style="background: var(--red); color: #fff;" onclick="window.close()">Close this tab</button>
+  `;
+}
+</script>
+</body>
+</html>
