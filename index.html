@@ -3,22 +3,32 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MK Trading App</title>
+<title>TradeStart</title>
 <script src="https://cdn.leantech.me/link/loader/prod/ae/latest/lean-link-loader.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
 /* ── Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg:#F0F4FF; --surface:#FFFFFF; --surface-2:#F8FAFC; --border:#E2E8F0;
+  /* Lean 2.0 brand guide neutrals/black chrome, kept; primary accent reverted
+     to blue per feedback (brand green didn't read well as the primary
+     action color) — --accent-on-dark is the equivalent for use ON the
+     black header specifically, where the plain --blue is too muted. */
+  --bg:#F9F9FB;         /* Neutral 2 (light) */
+  --surface:#FFFFFF;
+  --surface-2:#F2F2F5;  /* Neutral 3 (light) */
+  --border:#D3D4DB;     /* Neutral 7 (light) */
   --blue:#3B82F6; --blue-dark:#2563EB; --blue-light:#EFF6FF;
-  --sky:#0EA5E9; --sky-light:#F0F9FF;
-  --emerald:#10B981; --emerald-light:#ECFDF5;
-  --violet:#8B5CF6; --violet-light:#F5F3FF;
-  --amber:#F59E0B; --amber-light:#FFFBEB;
-  --red:#EF4444; --red-light:#FEF2F2;
-  --text:#0F172A; --text-2:#475569; --text-3:#94A3B8;
+  --accent-on-dark:#60A5FA; /* accents ON the black header */
+  --sky:#72DBF8; --sky-light:#C2F3FF;         /* Blue 3 / Blue 1 */
+  --emerald:#35B979; --emerald-light:#DDF3E4; /* Green 10 / Green 4 */
+  --violet:#5B5BD6; --violet-light:#E0DFFE;   /* Iris 4 / Iris 1 */
+  --amber:#FFC53D; --amber-light:#FFE7B3;     /* Amber 4 / Amber 1 */
+  --red:#E5484D; --red-light:#FDD8D8;         /* Red 9 / Red 5 */
+  --text:#1C2024;    /* Neutral 12 (light) */
+  --text-2:#60646C;  /* Neutral 11 (light) */
+  --text-3:#7E808A;  /* Neutral 10 (light) */
   --radius-sm:8px; --radius:12px; --radius-lg:16px;
   font-family:'Inter',system-ui,-apple-system,sans-serif;
   font-size:15px; line-height:1.6; color:var(--text); font-variant-numeric:tabular-nums;
@@ -33,29 +43,30 @@ body { min-height:100vh; background:var(--bg); display:flex; flex-direction:colu
 .ticker-item .chg.up { color:#34D399; } .ticker-item .chg.down { color:#F87171; }
 @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
 
-/* Header — logo, nav tabs, and balance chip all share one row */
-header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 24px; height:72px; display:flex; align-items:center; gap:24px; flex-shrink:0; }
+/* Header — back to a plain white/light header matching the rest of the
+   app (dark chrome — black, then navy — didn't land after two tries), logo,
+   top nav, and balance chip. */
+header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 24px; height:72px; display:flex; align-items:center; gap:20px; flex-shrink:0; }
 .logo { display:flex; align-items:center; gap:10px; text-decoration:none; flex-shrink:0; }
-.logo-mark { width:36px; height:36px; flex-shrink:0; }
+.logo-mark { width:34px; height:34px; flex-shrink:0; }
 .logo-text { display:flex; flex-direction:column; line-height:1.1; }
-.logo-name { font-size:15px; font-weight:700; color:var(--text); letter-spacing:-0.3px; }
+.logo-name { font-size:15.5px; font-weight:700; color:var(--text); letter-spacing:-0.3px; }
 .logo-tagline { font-size:10px; font-weight:500; color:var(--text-3); letter-spacing:0.5px; text-transform:uppercase; }
-.header-right { display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.header-right { display:flex; align-items:center; gap:12px; flex-shrink:0; margin-left:auto; }
 .balance-chip { display:none; align-items:center; gap:6px; background:var(--emerald-light); border:1px solid #A7F3D0; border-radius:99px; padding:5px 14px; font-size:13px; font-weight:500; color:#065F46; white-space:nowrap; }
 .balance-chip .dot { width:6px; height:6px; border-radius:50%; background:var(--emerald); animation:pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-/* Top nav — sits inline with the logo/balance chip, fills the space between
-   them. Wide, evenly-distributed, icon + label + subtitle per tab. */
+/* Top nav — horizontal, always-visible tab strip, restyled for the white
+   header: dark text instead of white, blue-light active tint instead of
+   the dark-mode rgba blue tint. */
 .top-nav { flex:1; min-width:0; height:100%; display:flex; gap:0; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; }
 .top-nav::-webkit-scrollbar { display:none; }
-.nav-tab { flex:1; min-width:104px; padding:6px 10px; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-family:inherit; border:none; border-bottom:3px solid transparent; cursor:pointer; background:transparent; color:var(--text-3); transition:all 0.15s; }
+.nav-tab { flex:1; min-width:104px; padding:6px 10px; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-family:inherit; border:none; cursor:pointer; background:transparent; color:var(--text-3); transition:all 0.15s; }
 .nav-tab:hover { background:var(--surface-2); color:var(--text-2); }
-.nav-tab.active { color:var(--text); border-bottom-color:var(--blue); background:var(--blue-light); }
+.nav-tab.active { color:var(--blue-dark); background:var(--blue-light); }
 .nav-tab .tab-main { display:flex; align-items:center; gap:8px; font-size:14.5px; font-weight:700; }
 .nav-tab .tab-icon { font-size:18px; line-height:1; }
-.nav-tab .tab-sub { font-size:11px; font-weight:500; color:var(--text-3); }
-.nav-tab.active .tab-sub { color:var(--blue-dark); }
 
 /* Main + pages — wide layout so tabs use the full window instead of one
    narrow centered column. Two-column pages collapse to one below 920px. */
@@ -83,7 +94,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 /* Link method choice */
 
 /* Balance */
-.balance-card { background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%); border:1px solid #BFDBFE; border-radius:var(--radius); padding:18px 20px; margin-bottom:20px; }
+.balance-card { background:linear-gradient(135deg,var(--blue-light) 0%,#F0FDF4 100%); border:1px solid #BFDBFE; border-radius:var(--radius); padding:18px 20px; margin-bottom:20px; }
 .balance-label { font-size:12px; font-weight:600; color:var(--text-3); letter-spacing:0.4px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
 .live-dot { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; color:var(--emerald); }
 .live-dot::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--emerald); animation:pulse 2s infinite; }
@@ -94,7 +105,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .identity-card { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
 .identity-avatar { width:38px; height:38px; border-radius:50%; background:var(--blue-light); border:1px solid rgba(59,130,246,0.2); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
 .identity-name { font-size:14px; font-weight:700; color:var(--text); }
-.identity-iban  { font-size:11px; color:var(--text-3); font-family:monospace; margin-top:1px; }
+.identity-iban  { font-size:11px; color:var(--text-3); font-family:'JetBrains Mono',monospace; margin-top:1px; }
 
 /* Inner tabs */
 .inner-tab-bar { display:flex; gap:4px; margin-bottom:16px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:3px; }
@@ -138,7 +149,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 /* Deliberately distinct from .text-field: a readonly, click-to-copy URL
    needs to fit more characters per line and reads better monospaced — but
    that's a named, intentional exception, not a stray inline magic number. */
-.input-wrap input.link-url-field { font-size:12px; font-weight:400; padding:8px 12px; font-family:'SFMono-Regular',Menlo,Consolas,monospace; color:var(--text-2); }
+.input-wrap input.link-url-field { font-size:12px; font-weight:400; padding:8px 12px; font-family:'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace; color:var(--text-2); }
 
 /* Scheduled Payments — explicit-date execution rows */
 .exec-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
@@ -161,7 +172,11 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .schedule-payments-empty { color:var(--text-3); padding:6px 0; }
 
 /* Buttons */
-.btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; border-radius:var(--radius-sm); font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; border:none; }
+/* Fully rounded — the brand guide's badges/tags are all pill-shaped
+   ("rounded pill containers" is the explicit spec for its Badges system),
+   and that pill language carries through everywhere else too, so buttons
+   follow the same shape rather than the old 8px rounded-rect. */
+.btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; border-radius:999px; font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; border:none; }
 .btn:disabled { opacity:0.45; cursor:not-allowed; }
 .btn-primary  { background:var(--blue);   color:#fff; }
 .btn-primary:hover:not(:disabled)  { background:var(--blue-dark); }
@@ -312,19 +327,19 @@ footer a { color:var(--text-3); text-decoration:none; }
 .api-log-drawer.resizing { transition:none; }
 .api-log-resize-handle { position:absolute; top:0; left:0; bottom:0; width:6px; cursor:ew-resize; z-index:2; }
 .api-log-resize-handle:hover, .api-log-drawer.resizing .api-log-resize-handle { background:rgba(59,130,246,0.45); }
-.api-log-drawer.pinned { box-shadow:-10px 0 30px rgba(0,0,0,0.3), inset 3px 0 0 #3B82F6; }
+.api-log-drawer.pinned { box-shadow:-10px 0 30px rgba(0,0,0,0.3), inset 3px 0 0 var(--accent-on-dark); }
 .api-log-header { display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-bottom:1px solid #1E293B; flex-shrink:0; }
 .api-log-title { font-size:13px; font-weight:700; color:#F8FAFC; }
 .api-log-count { color:#64748B; font-weight:500; }
 .api-log-actions { display:flex; gap:8px; }
 .api-log-btn { background:transparent; border:1px solid #334155; color:#94A3B8; border-radius:6px; padding:5px 12px; font-size:11.5px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; }
 .api-log-btn:hover { border-color:#64748B; color:#F8FAFC; }
-.api-log-btn.active { background:#1E293B; border-color:#3B82F6; color:#F8FAFC; }
+.api-log-btn.active { background:#1E293B; border-color:var(--accent-on-dark); color:#F8FAFC; }
 
 .api-log-filters { display:flex; gap:6px; padding:10px 18px; border-bottom:1px solid #1E293B; flex-shrink:0; overflow-x:auto; }
 .api-log-filter-btn { flex-shrink:0; background:transparent; border:1px solid #334155; color:#94A3B8; border-radius:999px; padding:5px 12px; font-size:11px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
 .api-log-filter-btn:hover { border-color:#64748B; color:#F8FAFC; }
-.api-log-filter-btn.active { background:#3B82F6; border-color:#3B82F6; color:#fff; }
+.api-log-filter-btn.active { background:var(--accent-on-dark); border-color:var(--accent-on-dark); color:#fff; }
 
 .api-log-body { flex:1; overflow-y:auto; padding:8px 18px 18px; }
 .api-log-empty { color:#64748B; font-size:13px; padding:24px; text-align:center; }
@@ -333,7 +348,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .api-log-row { display:flex; align-items:center; gap:10px; padding:9px 12px; cursor:pointer; font-size:12.5px; }
 .api-log-row:hover { background:#1E293B; }
 .api-log-method { font-weight:700; font-size:10.5px; padding:2px 7px; border-radius:5px; letter-spacing:0.3px; flex-shrink:0; min-width:44px; text-align:center; }
-.api-log-method.GET { background:rgba(59,130,246,0.18); color:#60A5FA; }
+.api-log-method.GET { background:rgba(114,219,248,0.18); color:#72DBF8; }
 .api-log-method.POST { background:rgba(16,185,129,0.18); color:#34D399; }
 .api-log-method.DELETE { background:rgba(239,68,68,0.18); color:#F87171; }
 .api-log-method.PUT, .api-log-method.PATCH { background:rgba(245,158,11,0.18); color:#FBBF24; }
@@ -342,7 +357,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .api-log-source-tag { flex-shrink:0; background:rgba(45,212,191,0.18); color:#2DD4BF; font-weight:700; font-size:9.5px; letter-spacing:0.4px; padding:2px 6px; border-radius:5px; }
 .api-log-source-tag.webhook { background:rgba(251,191,36,0.18); color:#FBBF24; }
 .api-log-detail-hint { color:#94A3B8; font-size:11px; margin:2px 0 0; }
-.api-log-path { flex:1; min-width:0; color:#E2E8F0; font-family:'SFMono-Regular',Menlo,Consolas,monospace; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.api-log-path { flex:1; min-width:0; color:#E2E8F0; font-family:'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .api-log-status { font-weight:700; font-size:11px; padding:2px 8px; border-radius:5px; flex-shrink:0; }
 .api-log-status.ok { background:rgba(16,185,129,0.18); color:#34D399; }
 .api-log-status.err { background:rgba(239,68,68,0.18); color:#F87171; }
@@ -352,7 +367,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .api-log-entry.expanded .api-log-detail { display:block; }
 .api-log-detail-label { font-size:10px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:#64748B; margin:10px 0 4px; }
 .api-log-detail-label:first-child { margin-top:0; }
-.api-log-pre { background:#0B1220; border:1px solid #1E293B; border-radius:6px; padding:10px; font-family:'SFMono-Regular',Menlo,Consolas,monospace; font-size:11.5px; color:#CBD5E1; white-space:pre-wrap; word-break:break-all; max-height:220px; overflow-y:auto; }
+.api-log-pre { background:#0B1220; border:1px solid #1E293B; border-radius:6px; padding:10px; font-family:'JetBrains Mono','SFMono-Regular',Menlo,Consolas,monospace; font-size:11.5px; color:#CBD5E1; white-space:pre-wrap; word-break:break-all; max-height:220px; overflow-y:auto; }
 
 /* ═══ MOBILE APP PREVIEW ═══════════════════════════════════════════════════
    A phone-frame simulator of the trading app's mobile experience, opened
@@ -362,8 +377,10 @@ footer a { color:var(--text-3); text-decoration:none; }
    withdrawals go through /api/payout, and consent is managed via
    Lean.manageConsents() — the same globals/backend the desktop AoF/Payout
    tabs already use, just with the mobile screen's own DOM ids. */
-.mobile-app-trigger { display:flex; align-items:center; gap:6px; background:var(--surface); border:1.5px solid var(--border); border-radius:99px; padding:7px 16px; font-size:13px; font-weight:600; font-family:inherit; color:var(--text-2); cursor:pointer; white-space:nowrap; transition:all 0.15s; }
-.mobile-app-trigger:hover { border-color:var(--blue); color:var(--blue-dark); background:var(--blue-light); }
+/* Floating bottom-right, stacked above the User Reset dev button — kept
+   out of the header entirely now (that's the whole point of "floating"). */
+.mobile-app-fab { position:fixed; bottom:78px; right:24px; z-index:100; display:flex; align-items:center; gap:6px; background:var(--blue); border:1px solid var(--blue-dark); border-radius:999px; padding:11px 18px; font-size:13px; font-weight:700; font-family:inherit; color:#fff; cursor:pointer; white-space:nowrap; box-shadow:0 4px 14px rgba(37,99,235,0.3); transition:all 0.15s; }
+.mobile-app-fab:hover { background:var(--blue-dark); box-shadow:0 6px 18px rgba(37,99,235,0.4); }
 
 .phone-overlay { position:fixed; inset:0; background:#1E293B; display:none; align-items:center; justify-content:center; z-index:400; padding:24px; }
 .phone-overlay.open { display:flex; }
@@ -399,7 +416,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .m-section-label { font-size:11px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-3); margin-bottom:2px; }
 
 /* Portfolio */
-.m-balance-card { background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%); border:1px solid #BFDBFE; border-radius:var(--radius); padding:18px 20px; }
+.m-balance-card { background:linear-gradient(135deg,var(--blue-light) 0%,#F0FDF4 100%); border:1px solid #BFDBFE; border-radius:var(--radius); padding:18px 20px; }
 .m-balance-card .balance-label { font-size:11px; font-weight:600; color:var(--text-3); letter-spacing:0.4px; text-transform:uppercase; }
 .m-balance-card .balance-amount { font-size:30px; font-weight:700; letter-spacing:-1px; color:var(--text); margin-top:4px; }
 .m-balance-card .balance-amount .currency { font-size:16px; font-weight:600; color:var(--text-2); margin-right:3px; }
@@ -441,7 +458,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .m-account-row { display:flex; align-items:center; gap:12px; border:1.5px solid var(--border); border-radius:var(--radius); padding:12px 14px; }
 .m-account-info { flex:1; min-width:0; }
 .m-account-name { font-size:13.5px; font-weight:700; color:var(--text); }
-.m-account-iban { font-size:11px; color:var(--text-3); font-family:monospace; margin-top:1px; }
+.m-account-iban { font-size:11px; color:var(--text-3); font-family:'JetBrains Mono',monospace; margin-top:1px; }
 .m-account-edit-btn { flex-shrink:0; font-size:12px; font-weight:700; padding:6px 14px; border-radius:99px; border:1.5px solid var(--blue); background:var(--blue-light); color:var(--blue-dark); cursor:pointer; font-family:inherit; }
 .m-account-edit-btn:hover { background:var(--blue); color:#fff; }
 
@@ -460,6 +477,37 @@ body.phone-widget-active #lean-sdk-iframe {
   height: var(--phone-screen-height) !important;
   border-radius: 32px !important;
 }
+
+/* ═══ RESPONSIVE ═══════════════════════════════════════════════════════════
+   One dashboard layout, adapted down to tablet/phone widths rather than a
+   separate mobile build — the phone-frame preview is a deliberately
+   different, already-mobile UI; this is about the REST of the app (every
+   desktop page/card/header) not overflowing or becoming unusable on a
+   narrow viewport. .two-col already collapses at 920px above; these add
+   the tiers below that. */
+@media (max-width: 768px) {
+  main { padding: 18px 16px 40px; }
+  .card { padding: 16px; }
+  .form-row { flex-direction: column; gap: 0; }
+  .exec-row { flex-wrap: wrap; }
+  .recon-header, .schedule-card-top, .api-log-header { flex-wrap: wrap; }
+  .phone-overlay { padding: 12px; }
+  .phone-frame { width: min(380px, 100%); }
+}
+
+@media (max-width: 480px) {
+  header { gap: 10px; padding: 0 14px; }
+  .logo-name { font-size: 13.5px; }
+  .header-right { gap: 8px; }
+  .balance-chip { padding: 4px 10px; font-size: 12px; }
+  .balance-chip-label { display: none; }
+  .main-menu-btn .mm-sub { display: none; }
+  .main-menu-btn { padding: 8px 10px; }
+  .main-menu-dropdown { width: min(300px, calc(100vw - 28px)); }
+  .balance-amount { font-size: 28px; }
+  .card-title { font-size: 16px; }
+  .identity-card { flex-wrap: wrap; }
+}
 </style>
 </head>
 <body>
@@ -468,66 +516,50 @@ body.phone-widget-active #lean-sdk-iframe {
 <header>
   <a href="#" class="logo">
     <svg class="logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="36" height="36" rx="9" fill="#2563EB"/>
-      <rect x="7" y="14" width="6" height="12" rx="1.5" fill="white"/>
-      <line x1="10" y1="9" x2="10" y2="14" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-      <line x1="10" y1="26" x2="10" y2="29" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
-      <rect x="23" y="9" width="6" height="17" rx="1.5" fill="#34D399"/>
-      <line x1="26" y1="5" x2="26" y2="9" stroke="#34D399" stroke-width="1.8" stroke-linecap="round"/>
-      <line x1="26" y1="26" x2="26" y2="29" stroke="#34D399" stroke-width="1.8" stroke-linecap="round"/>
-      <path d="M13 20 L18 15 L23 20" stroke="rgba(255,255,255,0.5)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M18 2L31.2 9.5V24.5L18 32L4.8 24.5V9.5L18 2Z" fill="#3B82F6"/>
+      <path d="M9.5 21.5L15 15.5L19.5 20L26.5 11" stroke="#1B1B1F" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="26.5" cy="11" r="2" fill="#1B1B1F"/>
     </svg>
     <div class="logo-text">
-      <span class="logo-name">MK Trading</span>
-      <span class="logo-tagline">Open Banking Demo</span>
+      <span class="logo-name">TradeStart</span>
     </div>
   </a>
 
   <nav class="top-nav">
     <button class="nav-tab active" id="nav-RE" onclick="switchPage('RE')">
       <span class="tab-main"><span class="tab-icon">&#127974;</span>RE</span>
-      <span class="tab-sub">Link &amp; deposit</span>
     </button>
     <button class="nav-tab" id="nav-AOF" onclick="switchPage('AOF')">
       <span class="tab-main"><span class="tab-icon">&#128274;</span>AoF</span>
-      <span class="tab-sub">Link, deposit &amp; consent</span>
     </button>
     <button class="nav-tab" id="nav-SIP" onclick="switchPage('SIP')">
       <span class="tab-main"><span class="tab-icon">&#9889;</span>SIP</span>
-      <span class="tab-sub">Instant bank payment</span>
     </button>
     <button class="nav-tab" id="nav-RECON" onclick="switchPage('RECON')">
       <span class="tab-main"><span class="tab-icon">&#128202;</span>Recon</span>
-      <span class="tab-sub">Payment status</span>
     </button>
     <button class="nav-tab" id="nav-PAYOUT" onclick="switchPage('PAYOUT')">
       <span class="tab-main"><span class="tab-icon">&#128184;</span>Payout</span>
-      <span class="tab-sub">Withdraw funds</span>
     </button>
     <button class="nav-tab" id="nav-REFUND" onclick="switchPage('REFUND')">
       <span class="tab-main"><span class="tab-icon">&#8617;&#65039;</span>Refund</span>
-      <span class="tab-sub">Reverse a deposit</span>
     </button>
     <button class="nav-tab" id="nav-SCHEDULE" onclick="switchPage('SCHEDULE')">
       <span class="tab-main"><span class="tab-icon">&#128197;</span>Schedule</span>
-      <span class="tab-sub">Recurring payments</span>
     </button>
     <button class="nav-tab" id="nav-AVS" onclick="switchPage('AVS')">
       <span class="tab-main"><span class="tab-icon">&#128269;</span>AVS</span>
-      <span class="tab-sub">Verify an account</span>
     </button>
     <button class="nav-tab" id="nav-LINKS" onclick="switchPage('LINKS')">
       <span class="tab-main"><span class="tab-icon">&#128279;</span>Links</span>
-      <span class="tab-sub">Hosted checkout</span>
     </button>
   </nav>
 
   <div class="header-right">
     <div class="balance-chip" id="header-balance">
       <span class="dot"></span>
-      <span>Balance:&nbsp;<strong id="header-balance-val">AED 0.00</strong></span>
+      <span><span class="balance-chip-label">Balance:&nbsp;</span><strong id="header-balance-val">AED 0.00</strong></span>
     </div>
-    <button class="mobile-app-trigger" onclick="openMobileApp()">&#128241; Mobile App</button>
   </div>
 </header>
 
@@ -715,7 +747,6 @@ body.phone-widget-active #lean-sdk-iframe {
     <div class="card-eyebrow">Payouts</div>
     <div class="card-title">Withdraw to bank</div>
     <div class="card-subtitle">Send money to <strong>MK LAB RECON (FAB UAE)</strong> via the Lean Payouts API. This is a standalone sandbox for testing withdrawals — it's separate from your trading balance, so it's always funded.</div>
-    <div class="info-banner"><span>&#8505;&#65039;</span><span>Payouts need authorization before funds move. Submitting here creates the payout — it must be approved in the Lean Dashboard (Payouts → Authorize) to actually complete. This balance only updates once that happens.</span></div>
     <div class="stat-row">
       <div class="stat-card" style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
         <div>
@@ -731,15 +762,20 @@ body.phone-widget-active #lean-sdk-iframe {
       <button class="quick-btn" onclick="setPayoutAmount(500)">AED 500</button>
       <button class="quick-btn" onclick="setPayoutAmount(1000)">AED 1,000</button>
     </div>
-    <div class="input-wrap">
-      <div class="input-prefix">AED</div>
-      <input type="number" id="payout-amount" placeholder="0.00" min="1" step="any" />
+    <div class="form-row">
+      <div>
+        <div class="input-wrap" style="margin-bottom:0;">
+          <div class="input-prefix">AED</div>
+          <input type="number" id="payout-amount" placeholder="0.00" min="1" step="any" />
+        </div>
+      </div>
+      <div>
+        <div class="input-wrap" style="margin-bottom:0;">
+          <input type="text" id="payout-reference" placeholder="Reference (optional)" maxlength="32" class="text-field" />
+        </div>
+      </div>
     </div>
-    <div class="section-label">Reference <span style="text-transform:none; font-weight:400;">(optional, max 32 chars)</span></div>
-    <div class="input-wrap" style="margin-bottom:12px;">
-      <input type="text" id="payout-reference" placeholder="e.g. Withdrawal" maxlength="32" class="text-field" />
-    </div>
-    <button class="btn btn-danger" id="btn-payout" onclick="handlePayout()">Withdraw to bank</button>
+    <button class="btn btn-danger" id="btn-payout" onclick="handlePayout()" style="margin-top:12px;">Withdraw to bank</button>
     <p class="status-msg" id="status-payout"></p>
   </div>
 
@@ -994,6 +1030,7 @@ body.phone-widget-active #lean-sdk-iframe {
 </main>
 
 <footer>&#128274; Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security</footer>
+<button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
 <button class="dev-btn-floating" onclick="userReset()">&#128295; User Reset</button>
 
 <!-- GENERIC "WHY THIS PAGE?" INFO WINDOW — content injected per page by openInfoModal() -->
@@ -1013,6 +1050,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <div class="api-log-actions">
       <button class="api-log-btn" id="api-log-pin-btn" onclick="toggleApiLogPinned()" title="Keep open regardless of what you click outside the drawer">&#128204; Pin</button>
       <button class="api-log-btn" id="api-log-fullscreen-btn" onclick="toggleApiLogFullscreen()">Full screen</button>
+      <button class="api-log-btn" onclick="exportApiLogCsv()" title="Export whatever is currently shown (respects the active filter)">Export CSV</button>
       <button class="api-log-btn" onclick="clearApiLog()">Clear</button>
       <button class="api-log-btn" onclick="toggleApiLog()">Close &times;</button>
     </div>
@@ -1396,6 +1434,46 @@ document.addEventListener("click", (e) => {
   toggleApiLog();
 });
 
+// Exports whatever is CURRENTLY SHOWN in the drawer — i.e. respects
+// apiLogFilter, same as renderApiLog() — not the full unfiltered apiLog.
+function apiLogCsvEscape(val) {
+  if (val === null || val === undefined) return "";
+  const str = typeof val === "string" ? val : JSON.stringify(val);
+  return /[",\n]/.test(str) ? '"' + str.replace(/"/g, '""') + '"' : str;
+}
+
+function exportApiLogCsv() {
+  const filtered = apiLog.filter(apiLogMatchesFilter);
+  if (filtered.length === 0) { alert("No entries to export for the current filter."); return; }
+
+  const headers = ["id","timestamp","method","source","url","status","ok","durationMs","error","correlationId","requestBody","responseBody"];
+  const rows = filtered.map((e) => [
+    e.id,
+    e.startedAt instanceof Date ? e.startedAt.toISOString() : e.startedAt,
+    e.method,
+    e.source || "",
+    e.url,
+    e.status ?? "",
+    e.ok ?? "",
+    e.durationMs ?? "",
+    e.error || "",
+    e.correlationId || "",
+    e.reqBody ? JSON.stringify(e.reqBody) : "",
+    e.resBody ? JSON.stringify(e.resBody) : "",
+  ].map(apiLogCsvEscape).join(","));
+
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `api-activity-${apiLogFilter.toLowerCase()}-${filtered.length}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function clearApiLog() {
   apiLog.length = 0;
   apiLogExpanded.clear();
@@ -1694,6 +1772,8 @@ function switchPage(page) {
     if (el) el.classList.toggle("active", p === page);
   });
   currentPage = page;
+  updateMainMenuButton(page);
+  closeMainMenu();
 
   if (page === "RE")       renderReTab();
   if (page === "AOF")      renderAofTab();
@@ -1704,6 +1784,43 @@ function switchPage(page) {
   if (page === "AVS")      loadAvsHistory();
   if (page === "LINKS")    loadPaymentLinks();
 }
+
+// ─── FUNCTION MENU (replaces the old always-visible horizontal tab strip) ──
+const MAIN_MENU_META = {
+  RE:       { icon: "&#127974;",       name: "RE",       sub: "Link &amp; deposit" },
+  AOF:      { icon: "&#128274;",       name: "AoF",      sub: "Link, deposit &amp; consent" },
+  SIP:      { icon: "&#9889;",         name: "SIP",      sub: "Instant bank payment" },
+  RECON:    { icon: "&#128202;",       name: "Recon",    sub: "Payment status" },
+  PAYOUT:   { icon: "&#128184;",       name: "Payout",   sub: "Withdraw funds" },
+  REFUND:   { icon: "&#8617;&#65039;", name: "Refund",   sub: "Reverse a deposit" },
+  SCHEDULE: { icon: "&#128197;",       name: "Schedule", sub: "Recurring payments" },
+  AVS:      { icon: "&#128269;",       name: "AVS",      sub: "Verify an account" },
+  LINKS:    { icon: "&#128279;",       name: "Links",    sub: "Hosted checkout" },
+};
+
+function updateMainMenuButton(page) {
+  const meta = MAIN_MENU_META[page];
+  if (!meta) return;
+  document.getElementById("main-menu-current-icon").innerHTML = meta.icon;
+  document.getElementById("main-menu-current-name").innerHTML = meta.name;
+  document.getElementById("main-menu-current-sub").innerHTML = meta.sub;
+}
+
+function toggleMainMenu() {
+  const open = !document.getElementById("main-menu-dropdown").classList.contains("open");
+  document.getElementById("main-menu-dropdown").classList.toggle("open", open);
+  document.getElementById("main-menu-btn").classList.toggle("open", open);
+}
+
+function closeMainMenu() {
+  document.getElementById("main-menu-dropdown").classList.remove("open");
+  document.getElementById("main-menu-btn").classList.remove("open");
+}
+
+document.addEventListener("click", (e) => {
+  const menu = document.getElementById("main-menu");
+  if (menu && !menu.contains(e.target)) closeMainMenu();
+});
 
 // ─── INIT ───────────────────────────────────────────────────────────────────
 async function init() {
@@ -3445,7 +3562,7 @@ const INFO_CONTENT = {
     eyebrow: "Reverse Engineering",
     title:   "Why deposit here?",
     bullets: [
-      "Moves money from your RE-linked bank into your MK Trading balance",
+      "Moves money from your RE-linked bank into your TradeStart balance",
       "Uses Lean.pay() against the payment method you set up here",
       "Link and deposit both happen right here — AoF has its own separate tab",
     ],
@@ -3454,7 +3571,7 @@ const INFO_CONTENT = {
     eyebrow: "Open Finance",
     title:   "Why deposit here?",
     bullets: [
-      "Moves money from your bank into your MK Trading balance using your standing AoF consent",
+      "Moves money from your bank into your TradeStart balance using your standing AoF consent",
       "No fresh bank redirect per payment — the one-time consent covers every deposit",
       "Same consent also powers Scheduled Payments — manage or revoke it right here",
     ],
