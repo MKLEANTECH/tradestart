@@ -795,7 +795,6 @@ body.phone-widget-active #lean-sdk-iframe {
     <div class="card-eyebrow">Refunds</div>
     <div class="card-title">Refund a deposit</div>
     <div class="card-subtitle">Reverses a completed RE, SIP or AoF deposit back to the same bank account it came from &mdash; Lean looks up the payer, you never enter an IBAN.</div>
-    <div class="info-banner"><span>&#8505;&#65039;</span><span>Maker-checker flow: creating a refund only queues it as CREATED. Nothing moves until you Approve it in the history panel.</span></div>
 
     <div class="section-label">Payment to refund</div>
     <select id="refund-payment" class="select-input" onchange="onRefundPaymentChange()"><option value="">Select a completed deposit&hellip;</option></select>
@@ -819,14 +818,17 @@ body.phone-widget-active #lean-sdk-iframe {
       </div>
     </div>
 
-    <div class="section-label">Description <span style="text-transform:none; font-weight:400;">(optional)</span></div>
-    <div class="input-wrap">
-      <input type="text" id="refund-description" placeholder="e.g. Order NO. 21342322123" maxlength="140" class="text-field" />
-    </div>
-
-    <div class="section-label">External reference <span style="text-transform:none; font-weight:400;">(optional, your own tracking ID)</span></div>
-    <div class="input-wrap" style="margin-bottom:12px;">
-      <input type="text" id="refund-external-reference" placeholder="e.g. your internal ticket ID" class="text-field" />
+    <div class="form-row">
+      <div>
+        <div class="input-wrap" style="margin-bottom:0;">
+          <input type="text" id="refund-description" placeholder="Description (optional)" maxlength="140" class="text-field" />
+        </div>
+      </div>
+      <div>
+        <div class="input-wrap" style="margin-bottom:0;">
+          <input type="text" id="refund-external-reference" placeholder="External reference (optional)" class="text-field" />
+        </div>
+      </div>
     </div>
 
     <button class="btn btn-primary" id="btn-create-refund" onclick="handleCreateRefund()">Create refund</button>
@@ -1026,7 +1028,13 @@ body.phone-widget-active #lean-sdk-iframe {
 
 </main>
 
-<footer>&#128274; Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security</footer>
+<footer>
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style="vertical-align:-3px; margin-right:4px;" aria-hidden="true">
+    <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+    <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+  </svg>
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security
+</footer>
 <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
 <button class="dev-btn-floating" onclick="userReset()">&#128295; User Reset</button>
 
