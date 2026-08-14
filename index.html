@@ -501,9 +501,6 @@ body.phone-widget-active #lean-sdk-iframe {
   .header-right { gap: 8px; }
   .balance-chip { padding: 4px 10px; font-size: 12px; }
   .balance-chip-label { display: none; }
-  .main-menu-btn .mm-sub { display: none; }
-  .main-menu-btn { padding: 8px 10px; }
-  .main-menu-dropdown { width: min(300px, calc(100vw - 28px)); }
   .balance-amount { font-size: 28px; }
   .card-title { font-size: 16px; }
   .identity-card { flex-wrap: wrap; }
@@ -1772,8 +1769,6 @@ function switchPage(page) {
     if (el) el.classList.toggle("active", p === page);
   });
   currentPage = page;
-  updateMainMenuButton(page);
-  closeMainMenu();
 
   if (page === "RE")       renderReTab();
   if (page === "AOF")      renderAofTab();
@@ -1784,43 +1779,6 @@ function switchPage(page) {
   if (page === "AVS")      loadAvsHistory();
   if (page === "LINKS")    loadPaymentLinks();
 }
-
-// ─── FUNCTION MENU (replaces the old always-visible horizontal tab strip) ──
-const MAIN_MENU_META = {
-  RE:       { icon: "&#127974;",       name: "RE",       sub: "Link &amp; deposit" },
-  AOF:      { icon: "&#128274;",       name: "AoF",      sub: "Link, deposit &amp; consent" },
-  SIP:      { icon: "&#9889;",         name: "SIP",      sub: "Instant bank payment" },
-  RECON:    { icon: "&#128202;",       name: "Recon",    sub: "Payment status" },
-  PAYOUT:   { icon: "&#128184;",       name: "Payout",   sub: "Withdraw funds" },
-  REFUND:   { icon: "&#8617;&#65039;", name: "Refund",   sub: "Reverse a deposit" },
-  SCHEDULE: { icon: "&#128197;",       name: "Schedule", sub: "Recurring payments" },
-  AVS:      { icon: "&#128269;",       name: "AVS",      sub: "Verify an account" },
-  LINKS:    { icon: "&#128279;",       name: "Links",    sub: "Hosted checkout" },
-};
-
-function updateMainMenuButton(page) {
-  const meta = MAIN_MENU_META[page];
-  if (!meta) return;
-  document.getElementById("main-menu-current-icon").innerHTML = meta.icon;
-  document.getElementById("main-menu-current-name").innerHTML = meta.name;
-  document.getElementById("main-menu-current-sub").innerHTML = meta.sub;
-}
-
-function toggleMainMenu() {
-  const open = !document.getElementById("main-menu-dropdown").classList.contains("open");
-  document.getElementById("main-menu-dropdown").classList.toggle("open", open);
-  document.getElementById("main-menu-btn").classList.toggle("open", open);
-}
-
-function closeMainMenu() {
-  document.getElementById("main-menu-dropdown").classList.remove("open");
-  document.getElementById("main-menu-btn").classList.remove("open");
-}
-
-document.addEventListener("click", (e) => {
-  const menu = document.getElementById("main-menu");
-  if (menu && !menu.contains(e.target)) closeMainMenu();
-});
 
 // ─── INIT ───────────────────────────────────────────────────────────────────
 async function init() {
