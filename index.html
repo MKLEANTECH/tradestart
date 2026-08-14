@@ -85,6 +85,11 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .card-title { font-size:18px; font-weight:700; color:var(--text); margin-bottom:6px; }
 .card-subtitle { font-size:13px; color:var(--text-2); line-height:1.55; margin-bottom:20px; }
 
+.integrations-card-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:16px; }
+.integration-card { cursor:pointer; transition:all 0.15s; }
+.integration-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.06); }
+.integration-card .card-subtitle { margin-bottom:0; }
+
 /* Connect */
 .connect-area { background:var(--surface-2); border:1.5px dashed var(--border); border-radius:var(--radius); padding:28px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:12px; }
 .connect-icon { width:56px; height:56px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:26px; background:var(--blue-light); border:1px solid rgba(59,130,246,0.15); }
@@ -114,6 +119,13 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 
 /* Section label */
 .section-label { font-size:11px; font-weight:700; color:var(--text-3); letter-spacing:0.6px; text-transform:uppercase; margin-bottom:12px; }
+
+.data-section-heading { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:700; color:var(--text); margin:24px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.data-section-heading:first-of-type { margin-top:0; }
+.data-section-heading .icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; background:var(--blue-light); }
+.data-section { border-radius:var(--radius); padding:14px 16px; background:var(--blue-light); }
+.data-section .recon-table th { border-bottom-color:rgba(0,0,0,0.08); }
+.data-section .recon-table tr:not(:last-child) td { border-bottom-color:rgba(0,0,0,0.08); }
 
 /* Inputs */
 .quick-amounts { display:flex; gap:8px; margin-bottom:10px; }
@@ -275,7 +287,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .recon-badge.UNRECEIVED  { background:#FEF2F2; color:#991B1B; }
 .recon-badge.PENDING,.recon-badge.UNKNOWN { background:var(--surface-2); color:var(--text-3); }
 .rail-pill { display:inline-block; padding:2px 8px; border-radius:99px; font-size:10px; font-weight:700; }
-.rail-pill.RE  { background:var(--blue-light);   color:var(--blue); }
+.rail-pill.CP  { background:var(--blue-light);   color:var(--blue); }
 .rail-pill.SIP { background:var(--sky-light);    color:var(--sky); }
 .rail-pill.OF,.rail-pill.AOF { background:var(--violet-light); color:var(--violet); }
 .recon-deposit-info { font-size:11px; color:var(--text-3); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
@@ -523,8 +535,8 @@ body.phone-widget-active #lean-sdk-iframe {
   </a>
 
   <nav class="top-nav">
-    <button class="nav-tab active" id="nav-RE" onclick="switchPage('RE')">
-      <span class="tab-main"><span class="tab-icon">&#127974;</span>RE</span>
+    <button class="nav-tab active" id="nav-INTEGRATIONS" onclick="switchPage('INTEGRATIONS')">
+      <span class="tab-main"><span class="tab-icon">&#128268;</span>Integrations</span>
     </button>
     <button class="nav-tab" id="nav-AOF" onclick="switchPage('AOF')">
       <span class="tab-main"><span class="tab-icon">&#128274;</span>AoF</span>
@@ -561,67 +573,143 @@ body.phone-widget-active #lean-sdk-iframe {
 </header>
 
 <main>
-<!-- RE PAGE -->
-<div class="page active" id="page-RE">
-<button class="page-help-btn" onclick="openInfoModal('RE')" title="Why deposit here?">?</button>
-<div class="two-col">
-<div class="col-stack">
-  <div class="card" id="re-unlinked">
-    <div class="card-eyebrow">Get started</div>
-    <div class="card-title">Link your bank via RE</div>
-    <div class="card-subtitle">Log in to your bank inside the app. One-time setup, instant — you won't be asked again.</div>
-    <div class="connect-area">
-      <div class="connect-icon">&#128273;</div>
-      <button class="btn btn-primary" id="btn-link-re" onclick="startLinkRE()" style="width:100%;max-width:280px;">Link via RE</button>
-    </div>
-    <p class="status-msg" id="status-re-link"></p>
-  </div>
+<!-- INTEGRATIONS PAGE -->
+<div class="page active" id="page-INTEGRATIONS">
+<button class="page-help-btn" onclick="openInfoModal('INTEGRATIONS')" title="Why Integrations?">?</button>
 
-  <div class="card" id="re-linked" style="display:none;">
-    <div class="identity-card" id="identity-card" style="display:none;">
-      <div class="identity-avatar">&#128100;</div>
-      <div><div class="identity-name" id="identity-name">—</div><div class="identity-iban" id="identity-iban"></div></div>
+<div id="integrations-grid">
+  <div class="card-title" style="margin-bottom:4px;">Client integration patterns</div>
+  <div class="card-subtitle" style="margin-bottom:18px;">TradeStart's clients don't all connect the same way — pick a pattern below to see how each one actually works.</div>
+  <div class="integrations-card-grid">
+    <div class="card integration-card" onclick="openIntegrationDemo('CONNECTPAY')">
+      <div class="card-eyebrow">Connect &amp; Pay</div>
+      <div class="card-title">Link a bank, then deposit</div>
+      <div class="card-subtitle">Lean.connect() links the bank and grants payment permission in one go; Lean.pay() then deposits — both on the same screen.</div>
     </div>
-    <div class="balance-card">
-      <div class="balance-label"><span id="re-bank-name">Your bank</span><span class="live-dot">Live</span></div>
-      <div class="balance-amount"><span class="currency">AED</span><span id="re-balance-val">—</span></div>
+    <div class="card integration-card" onclick="openIntegrationDemo('DATAONLY')">
+      <div class="card-eyebrow">Data Only</div>
+      <div class="card-title">Connect for data, no payments</div>
+      <div class="card-subtitle">Lean.connect() with identity, accounts, balance &amp; transactions permissions only — no payment permission requested at all.</div>
     </div>
-    <div>
-      <button class="btn btn-secondary" id="btn-setup-payments" onclick="setupPayments()">&#128273; Set up payment method</button>
-      <div class="section-label">Deposit amount</div>
-      <div class="quick-amounts">
-        <button class="quick-btn" onclick="setReAmount(100)">AED 100</button>
-        <button class="quick-btn" onclick="setReAmount(500)">AED 500</button>
-        <button class="quick-btn" onclick="setReAmount(1000)">AED 1,000</button>
-      </div>
-      <div class="input-wrap">
-        <div class="input-prefix">AED</div>
-        <input type="number" id="re-deposit-amount" placeholder="0.00" min="1" step="any" />
-      </div>
-      <div class="section-label">Reference <span style="text-transform:none; font-weight:400;">(optional)</span></div>
-      <div class="input-wrap" style="margin-bottom:12px;">
-        <input type="text" id="re-reference" placeholder="e.g. Trading top-up" class="text-field" />
-      </div>
-      <button class="btn btn-primary" id="btn-re-deposit" onclick="handleReDeposit()">Deposit funds</button>
-      <p class="status-msg" id="status-re"></p>
+    <div class="card integration-card" onclick="openIntegrationDemo('AOF')">
+      <div class="card-eyebrow">AoF Only</div>
+      <div class="card-title">Standing consent via Open Finance</div>
+      <div class="card-subtitle">Lean.authorizeConsent() sets up a standing Account-on-File consent — no linking step, no card details.</div>
     </div>
-  </div>
-
-  <div class="card" id="re-success" style="display:none;">
-    <div class="success-wrap">
-      <div class="success-icon">&#10003;</div>
-      <div>
-        <div class="success-amount-label">Added to your trading account</div>
-        <div class="success-amount" id="re-success-amount">AED 0.00</div>
-      </div>
-      <div class="trading-balance-row">
-        <span class="lbl">Trading balance: &nbsp;</span>
-        <span class="val" id="re-trading-balance-disp">AED 0.00</span>
-      </div>
-      <button class="btn btn-secondary" style="max-width:240px;" onclick="resetDeposit('RE')">Make another deposit</button>
+    <div class="card integration-card" onclick="openIntegrationDemo('SIP')">
+      <div class="card-eyebrow">SIP Only</div>
+      <div class="card-title">One-off payment, no linking</div>
+      <div class="card-subtitle">Lean.checkout() takes a single instant payment — no bank link and no standing consent required.</div>
+    </div>
+    <div class="card integration-card" onclick="openIntegrationDemo('SIPAOF')">
+      <div class="card-eyebrow">SIP + AoF Together</div>
+      <div class="card-title">Both funding rails, one screen</div>
+      <div class="card-subtitle">Offer a standing AoF consent as the recommended option, with one-off SIP as the fallback for a first-time payer.</div>
     </div>
   </div>
 </div>
+
+<div id="integrations-detail" style="display:none;">
+  <button class="btn btn-secondary btn-sm" style="margin-bottom:16px;" onclick="closeIntegrationDemo()">&larr; Back to Integrations</button>
+
+  <!-- Connect & Pay -->
+  <div class="two-col integration-demo" id="demo-CONNECTPAY" style="display:none;">
+  <div class="col-stack">
+    <div class="card" id="cp-unlinked">
+      <div class="card-eyebrow">Connect &amp; Pay</div>
+      <div class="card-title">Link your bank</div>
+      <div class="card-subtitle">Log in to your bank inside the app. One-time setup, instant — you won't be asked again.</div>
+      <div class="connect-area">
+        <div class="connect-icon">&#128273;</div>
+        <button class="btn btn-primary" id="btn-link-cp" onclick="startLinkConnectPay()" style="width:100%;max-width:280px;">Connect bank</button>
+      </div>
+      <p class="status-msg" id="status-cp-link"></p>
+    </div>
+
+    <div class="card" id="cp-linked" style="display:none;">
+      <div class="identity-card" id="cp-identity-card" style="display:none;">
+        <div class="identity-avatar">&#128100;</div>
+        <div><div class="identity-name" id="cp-identity-name">—</div><div class="identity-iban" id="cp-identity-iban"></div></div>
+      </div>
+      <div class="balance-card">
+        <div class="balance-label"><span id="cp-bank-name">Your bank</span><span class="live-dot">Live</span></div>
+        <div class="balance-amount"><span class="currency">AED</span><span id="cp-balance-val">—</span></div>
+      </div>
+      <div>
+        <button class="btn btn-secondary" id="btn-cp-setup-payments" onclick="setupConnectPayPayments()">&#128273; Set up payment method</button>
+        <div class="section-label">Deposit amount</div>
+        <div class="quick-amounts">
+          <button class="quick-btn" onclick="setCpAmount(100)">AED 100</button>
+          <button class="quick-btn" onclick="setCpAmount(500)">AED 500</button>
+          <button class="quick-btn" onclick="setCpAmount(1000)">AED 1,000</button>
+        </div>
+        <div class="input-wrap">
+          <div class="input-prefix">AED</div>
+          <input type="number" id="cp-deposit-amount" placeholder="0.00" min="1" step="any" />
+        </div>
+        <div class="section-label">Reference <span style="text-transform:none; font-weight:400;">(optional)</span></div>
+        <div class="input-wrap" style="margin-bottom:12px;">
+          <input type="text" id="cp-reference" placeholder="e.g. Trading top-up" class="text-field" />
+        </div>
+        <button class="btn btn-primary" id="btn-cp-deposit" onclick="handleConnectPayDeposit()">Deposit funds</button>
+        <p class="status-msg" id="status-cp"></p>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- Data Only -->
+  <div class="integration-demo" id="demo-DATAONLY" style="display:none;">
+    <div class="card" id="do-unlinked">
+      <div class="card-eyebrow">Data Only</div>
+      <div class="card-title">Connect for data — no payment permission</div>
+      <div class="card-subtitle">This calls Lean.connect() with only identity, accounts, balance and transactions permissions — no "payments" scope is ever requested, so this entity can never be charged.</div>
+      <div class="connect-area">
+        <div class="connect-icon">&#128202;</div>
+        <button class="btn btn-primary" id="btn-link-do" onclick="startLinkDataOnly()" style="width:100%;max-width:280px;">Connect for data</button>
+      </div>
+      <p class="status-msg" id="status-do-link"></p>
+    </div>
+
+    <div class="card" id="do-linked" style="display:none;">
+      <div class="card-eyebrow">Data Only</div>
+      <div class="card-title">Connected accounts</div>
+      <div class="card-subtitle">Everything below came straight from Lean's Data API for this entity — proof of read access with no ability to move money.</div>
+      <div class="data-section-heading"><span class="icon">&#128100;</span>Identity</div>
+      <div class="data-section"><div id="do-identity-table"></div></div>
+      <div class="data-section-heading"><span class="icon">&#127974;</span>Accounts</div>
+      <div class="data-section"><div id="do-accounts-list"></div></div>
+      <div class="data-section-heading"><span class="icon">&#128203;</span>Recent transactions</div>
+      <div class="data-section"><div id="do-transactions-list"></div></div>
+      <p class="status-msg" id="status-do"></p>
+    </div>
+  </div>
+
+  <!-- SIP + AoF Together -->
+  <div class="integration-demo" id="demo-SIPAOF" style="display:none;">
+    <div class="card" style="max-width:560px;" id="sipaof-card">
+      <div class="card-eyebrow">Open Finance — SIP + AoF</div>
+      <div class="card-title">Fund with either rail</div>
+      <div class="card-subtitle">A standing AoF consent is offered as the recommended option; SIP stays available as a no-commitment, one-off alternative — same amount, either rail.</div>
+      <div class="section-label">Deposit amount</div>
+      <div class="quick-amounts">
+        <button class="quick-btn" onclick="setSipAofAmount(100)">AED 100</button>
+        <button class="quick-btn" onclick="setSipAofAmount(500)">AED 500</button>
+        <button class="quick-btn" onclick="setSipAofAmount(1000)">AED 1,000</button>
+      </div>
+      <div class="input-wrap" style="margin-bottom:12px;">
+        <div class="input-prefix">AED</div>
+        <input type="number" id="sipaof-amount" placeholder="0.00" min="1" step="any" />
+      </div>
+      <div class="section-label">Funding method</div>
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+        <button class="btn btn-violet" id="sipaof-of-btn" onclick="sipAofHandleOfPrimary()" style="flex:1;">Link &amp; pay via AoF</button>
+        <span id="sipaof-of-badge" style="font-size:11px;font-weight:700;color:var(--violet);background:var(--violet-light);padding:4px 10px;border-radius:99px;white-space:nowrap;">Recommended</span>
+      </div>
+      <button class="btn btn-sky" id="sipaof-sip-btn" onclick="sipAofSipTopUp()" style="width:100%;">Pay via SIP (one-off)</button>
+      <p class="status-msg" id="status-sipaof"></p>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -661,21 +749,6 @@ body.phone-widget-active #lean-sdk-iframe {
       <p class="status-msg" id="status-aof"></p>
     </div>
   </div>
-
-  <div class="card" id="aof-success" style="display:none;">
-    <div class="success-wrap">
-      <div class="success-icon">&#10003;</div>
-      <div>
-        <div class="success-amount-label">Added to your trading account</div>
-        <div class="success-amount" id="aof-success-amount">AED 0.00</div>
-      </div>
-      <div class="trading-balance-row">
-        <span class="lbl">Trading balance: &nbsp;</span>
-        <span class="val" id="aof-trading-balance-disp">AED 0.00</span>
-      </div>
-      <button class="btn btn-secondary" style="max-width:240px;" onclick="resetDeposit('AOF')">Make another deposit</button>
-    </div>
-  </div>
 </div>
 
 <div class="card">
@@ -710,12 +783,6 @@ body.phone-widget-active #lean-sdk-iframe {
     </div>
     <button class="btn btn-sky" id="btn-sip-standalone" onclick="handleSipStandaloneCheckout()">Checkout via SIP</button>
     <p class="status-msg" id="status-sip-standalone"></p>
-  </div>
-  <div class="card" style="max-width:560px; display:none;" id="sip-success-card">
-    <div class="card-eyebrow">Open Finance — Single Instant Payment</div>
-    <div class="card-title">&#10003; Payment successful</div>
-    <div class="card-subtitle">You deposited <strong id="sip-success-amount"></strong> via SIP. Your trading balance has been updated.</div>
-    <button class="btn btn-sky" onclick="resetSipStandalone()">Make another SIP payment</button>
   </div>
 </div>
 
@@ -1041,6 +1108,28 @@ body.phone-widget-active #lean-sdk-iframe {
 <!-- GENERIC "WHY THIS PAGE?" INFO WINDOW — content injected per page by openInfoModal() -->
 <div class="info-modal-overlay" id="info-modal-overlay" onclick="if(event.target===this) closeInfoModal()">
   <div class="info-modal" id="info-modal-content"></div>
+</div>
+
+<!-- GENERIC PAYMENT SUCCESS POPUP — shown over whichever deposit screen just
+     completed a payment (see showDepositSuccess()), instead of swapping the
+     card's content out for a separate "success" card that needed its own
+     back/reset navigation. -->
+<div class="info-modal-overlay" id="payment-success-overlay" onclick="if(event.target===this) closePaymentSuccessModal()">
+  <div class="info-modal" id="payment-success-content" style="text-align:center;">
+    <button class="info-modal-close" onclick="closePaymentSuccessModal()">&times;</button>
+    <div class="success-wrap">
+      <div class="success-icon">&#10003;</div>
+      <div>
+        <div class="success-amount-label">Payment successful</div>
+        <div class="success-amount" id="payment-success-amount">AED 0.00</div>
+      </div>
+      <div class="trading-balance-row">
+        <span class="lbl">Trading balance: &nbsp;</span>
+        <span class="val" id="payment-success-balance">AED 0.00</span>
+      </div>
+      <button class="btn btn-primary" style="max-width:200px;" onclick="closePaymentSuccessModal()">Close</button>
+    </div>
+  </div>
 </div>
 
 <!-- API ACTIVITY DRAWER -->
@@ -1664,32 +1753,36 @@ function renderApiLog() {
 }
 
 // ─── STATE ─────────────────────────────────────────────────────────────────
-let currentPage = "RE"; // RE | AOF | SIP | RECON | PAYOUT | SCHEDULE
+let currentPage = "INTEGRATIONS"; // INTEGRATIONS | AOF | SIP | RECON | PAYOUT | SCHEDULE
 
 // NOTE: there is deliberately no shared "linkedMethod"/"rail" variable here
-// anymore — RE-linked and OF-linked are each their own independent signal
-// (entityId, and consentStatus === "AUTHORISED", respectively). See the
-// 2026-07-12 fix in renderReTab()/renderAofTab() for why a single shared
-// variable was a real bug: it let linking one rail silently make the app
-// forget the other was ever linked.
+// anymore — Connect & Pay-linked, Data Only-linked, and OF-linked are each
+// their own independent signal (entityId, dataOnlyEntityId, and
+// consentStatus === "AUTHORISED", respectively). See the 2026-07-12 fix in
+// renderConnectPayCard()/renderAofTab() for why a single shared variable
+// was a real bug: it let linking one rail silently make the app forget the
+// other was ever linked.
 
 let appUserId     = null;
 let customerId    = null;
 let accessToken   = null;
-// RE fields
+// Connect & Pay fields
 let entityId          = null;
 let paymentSourceId   = null;
 let beneficiaryStatus = null;
+// Data Only field — its own independent entity, never the same one as above
+let dataOnlyEntityId  = null;
 // OF fields
 let consentId     = null;
 let consentStatus = null;
 
 let tradingBalance = 0;
-// RE and AoF each have their own independent linked-account balance — see
-// the note above renderReBalanceDisplay()/renderAofBalanceDisplay() for why
-// these can't be a single shared pair of variables.
-let reBankBalance  = null;
-let reBankName     = null;
+// Connect & Pay and AoF each have their own independent linked-account
+// balance — see the note above renderConnectPayBalanceDisplay()/
+// renderAofBalanceDisplay() for why these can't be a single shared pair of
+// variables.
+let cpBankBalance  = null;
+let cpBankName     = null;
 let aofBankBalance = null;
 let aofBankName    = null;
 let payouts        = [];
@@ -1766,19 +1859,19 @@ function setLoading(btnId, loading, label = "Deposit funds") {
   }
 }
 
-function setReAmount(val)  { document.getElementById("re-deposit-amount").value  = val; }
+function setCpAmount(val)  { document.getElementById("cp-deposit-amount").value  = val; }
 function setAofAmount(val) { document.getElementById("aof-deposit-amount").value = val; }
 
 // ─── PAGE NAVIGATION ────────────────────────────────────────────────────────
 function switchPage(page) {
-  ["RE","AOF","SIP","RECON","PAYOUT","REFUND","SCHEDULE","AVS","LINKS"].forEach(p => {
+  ["INTEGRATIONS","AOF","SIP","RECON","PAYOUT","REFUND","SCHEDULE","AVS","LINKS"].forEach(p => {
     document.getElementById("nav-" + p).classList.toggle("active", p === page);
     const el = document.getElementById("page-" + p);
     if (el) el.classList.toggle("active", p === page);
   });
   currentPage = page;
 
-  if (page === "RE")       renderReTab();
+  if (page === "INTEGRATIONS") closeIntegrationDemo();
   if (page === "AOF")      renderAofTab();
   if (page === "RECON")    loadReconciliation();
   if (page === "PAYOUT")   renderPayoutTab();
@@ -1797,6 +1890,10 @@ async function init() {
   // us, once the browser comes back from the bank, whether to resume this
   // flow on the desktop AoF/SIP tab or reopen the phone overlay instead.
   const isMobileRedirect = urlParams.get("via") === "mobile";
+  // Set by sipAofConnectOF()/sipAofSipTopUp() on their redirect URLs — tells
+  // us to resume on the Integrations page's SIP + AoF card instead of the
+  // standalone desktop AoF/SIP tabs.
+  const isSipAofRedirect = urlParams.get("via") === "sipaof";
 
   // Must be pulled out here, before the history.replaceState() below wipes
   // the query string — these are the params Lean appends to our redirect
@@ -1831,6 +1928,7 @@ async function init() {
     customerId        = data.customerId;
     accessToken       = data.accessToken;
     entityId          = data.entityId;
+    dataOnlyEntityId  = data.dataOnlyEntityId;
     paymentSourceId   = data.paymentSourceId;
     beneficiaryStatus = data.beneficiaryStatus;
     consentId         = data.consentId;
@@ -1871,6 +1969,18 @@ async function init() {
         waitForMobileConsentAuthorised();
         return;
       }
+      if (isSipAofRedirect) {
+        switchPage("INTEGRATIONS");
+        openIntegrationDemo("SIPAOF");
+        if (consentStatus === "AUTHORISED") {
+          await completeSipAofAutoPayment();
+          return;
+        }
+        setLoading("sipaof-of-btn", true, "Link & pay via AoF");
+        setStatus("sipaof", "Verifying your authorization…", "ok");
+        await pollForSipAofConsentLink();
+        return;
+      }
       // Returning from AlTareq after the AoF tab's "Link via OF" step.
       switchPage("AOF");
       // The /api/init response above is a direct, non-broadcast read of the
@@ -1896,6 +2006,13 @@ async function init() {
         setStatusEl("mobile-status-deposit", "Bank authorization failed or was cancelled. Try again.", "error");
         return;
       }
+      if (isSipAofRedirect) {
+        switchPage("INTEGRATIONS");
+        openIntegrationDemo("SIPAOF");
+        sessionStorage.removeItem("sipaof_pending_amount");
+        setStatus("sipaof", "Bank authorization failed or was cancelled. Try again.", "error");
+        return;
+      }
       switchPage("AOF");
       setStatusEl("status-aof-link", "Bank authorization failed or was cancelled. Try again.", "error");
       return;
@@ -1905,6 +2022,12 @@ async function init() {
         openMobileApp();
         switchMobileTab("DEPOSITS");
         await handleMobileSipRedirectReturn(sipRedirectParams);
+        return;
+      }
+      if (isSipAofRedirect) {
+        switchPage("INTEGRATIONS");
+        openIntegrationDemo("SIPAOF");
+        await handleSipAofRedirectReturn(sipRedirectParams);
         return;
       }
       switchPage("SIP");
@@ -1923,23 +2046,25 @@ async function init() {
         setStatusEl("mobile-status-deposit", "SIP payment failed or was cancelled.", "error");
         return;
       }
+      if (isSipAofRedirect) {
+        switchPage("INTEGRATIONS");
+        openIntegrationDemo("SIPAOF");
+        await handleSipAofRedirectReturn(sipRedirectParams);
+        setStatus("sipaof", "SIP payment failed or was cancelled.", "error");
+        return;
+      }
       switchPage("SIP");
       await handleSipRedirectReturn(sipRedirectParams);
       setStatus("sip-standalone", "SIP payment failed or was cancelled.", "error");
       return;
     }
 
-    // No redirect to resume — land on RE if it's linked, else AoF if THAT's
-    // linked, else just default to RE (first in nav). If both happen to be
-    // linked, RE wins the initial landing spot — doesn't affect either tab's
-    // own state, purely which one you see first.
-    if (entityId) switchPage("RE");
-    else if (consentStatus === "AUTHORISED") switchPage("AOF");
-    else switchPage("RE");
+    // No redirect to resume — always land on the Integrations grid.
+    switchPage("INTEGRATIONS");
   } catch (err) {
-    // No single "Home" status line anymore — surface the error on both
-    // link screens since we don't yet know which tab the user landed on.
-    setStatusEl("status-re-link", `Could not connect to backend: ${err.message}`, "error");
+    // No single "Home" status line anymore — surface the error on the
+    // Integrations page since we don't yet know which demo the user will open.
+    setStatusEl("status-cp-link", `Could not connect to backend: ${err.message}`, "error");
     setStatusEl("status-aof-link", `Could not connect to backend: ${err.message}`, "error");
     console.error("Init error:", err);
   }
@@ -2038,15 +2163,15 @@ function applyLiveStatus(data) {
   if (currentPage === "REFUND") renderRefundList();
 }
 
-// ─── LINKING (RE and AoF each own their own link flow now — no Home tab) ───
+// ─── LINKING (Connect & Pay, Data Only and AoF each own their own link flow) ─
 
-// ── RE: Lean.connect() ────────────────────────────────────────────────────
-async function startLinkRE() {
-  if (!customerId) { setStatusEl("status-re-link", "Still initialising — please wait a moment.", "error"); return; }
-  if (!accessToken) { setStatusEl("status-re-link", "Session not ready. Refresh and try again.", "error"); return; }
+// ── Connect & Pay: Lean.connect() ─────────────────────────────────────────
+async function startLinkConnectPay() {
+  if (!customerId) { setStatusEl("status-cp-link", "Still initialising — please wait a moment.", "error"); return; }
+  if (!accessToken) { setStatusEl("status-cp-link", "Session not ready. Refresh and try again.", "error"); return; }
 
-  setLoading("btn-link-re", true, "Link via RE");
-  setStatusEl("status-re-link", "Opening your bank connection…");
+  setLoading("btn-link-cp", true, "Connect bank");
+  setStatusEl("status-cp-link", "Opening your bank connection…");
 
   /**
    * Single Lean.connect() call combining Data + Payments permissions.
@@ -2054,9 +2179,12 @@ async function startLinkRE() {
    * Requests every data scope Lean's Entity.permissions supports (not just
    * identity/accounts/balance/transactions) — identities, beneficiaries,
    * standing orders, direct debits and scheduled payments too — so the
-   * connected entity has full data access on top of payments.
+   * connected entity has full data access on top of payments. This broader
+   * permission set is also what lets the backend tell this entity apart
+   * from Data Only's narrower one when the entity.created webhook lands —
+   * see server.js for the classification logic.
    */
-  callLeanSdk("Lean.connect() — RE bank link", Lean.connect.bind(Lean), {
+  callLeanSdk("Lean.connect() — Connect & Pay bank link", Lean.connect.bind(Lean), {
     app_token:              APP_TOKEN,
     customer_id:            customerId,
     permissions:            ["identity", "accounts", "balance", "transactions", "identities", "beneficiaries", "standing_orders", "direct_debits", "scheduled_payments", "payments"],
@@ -2067,32 +2195,80 @@ async function startLinkRE() {
     callback: async (payload) => {
       console.log("[Lean.connect] Callback payload:", payload);
       if (payload.status === "SUCCESS") {
-        setStatusEl("status-re-link", "Bank linked! Finalizing…", "ok");
-        await pollForEntityLink();
+        setStatusEl("status-cp-link", "Bank linked! Finalizing…", "ok");
+        await pollForConnectPayEntity();
       } else if (payload.status === "CANCELLED") {
-        setStatusEl("status-re-link", "Bank linking cancelled.");
-        setLoading("btn-link-re", false, "Link via RE");
+        setStatusEl("status-cp-link", "Bank linking cancelled.");
+        setLoading("btn-link-cp", false, "Connect bank");
       } else {
-        setStatusEl("status-re-link", `Connection failed: ${payload.message || payload.status}`, "error");
-        setLoading("btn-link-re", false, "Link via RE");
+        setStatusEl("status-cp-link", `Connection failed: ${payload.message || payload.status}`, "error");
+        setLoading("btn-link-cp", false, "Connect bank");
       }
     },
   });
 }
 
-function pollForEntityLink() {
+function pollForConnectPayEntity() {
   waitForStatus(
     (data) => !!data.entityId,
     (data) => {
       entityId          = data.entityId;
       paymentSourceId    = data.paymentSourceId;
       beneficiaryStatus  = data.beneficiaryStatus;
-      setStatusEl("status-re-link", "");
-      renderReTab();
+      setStatusEl("status-cp-link", "");
+      renderConnectPayCard();
     },
     () => {
-      setStatusEl("status-re-link", "Webhook took too long — try refreshing the page.", "error");
-      setLoading("btn-link-re", false, "Link via RE");
+      setStatusEl("status-cp-link", "Webhook took too long — try refreshing the page.", "error");
+      setLoading("btn-link-cp", false, "Connect bank");
+    },
+  );
+}
+
+// ── Data Only: Lean.connect() with restricted, data-only permissions ─────
+async function startLinkDataOnly() {
+  if (!customerId) { setStatusEl("status-do-link", "Still initialising — please wait a moment.", "error"); return; }
+  if (!accessToken) { setStatusEl("status-do-link", "Session not ready. Refresh and try again.", "error"); return; }
+
+  setLoading("btn-link-do", true, "Connect for data");
+  setStatusEl("status-do-link", "Opening your bank connection…");
+
+  // No `payments` permission and no payment_destination_id at all — this
+  // entity can only ever be read from, never charged.
+  callLeanSdk("Lean.connect() — Data Only bank link", Lean.connect.bind(Lean), {
+    app_token:    APP_TOKEN,
+    customer_id:  customerId,
+    permissions:  ["identity", "accounts", "balance", "transactions"],
+    access_token: accessToken,
+    sandbox:      true,
+
+    callback: async (payload) => {
+      console.log("[Lean.connect — Data Only] Callback payload:", payload);
+      if (payload.status === "SUCCESS") {
+        setStatusEl("status-do-link", "Bank linked! Finalizing…", "ok");
+        await pollForDataOnlyEntity();
+      } else if (payload.status === "CANCELLED") {
+        setStatusEl("status-do-link", "Bank linking cancelled.");
+        setLoading("btn-link-do", false, "Connect for data");
+      } else {
+        setStatusEl("status-do-link", `Connection failed: ${payload.message || payload.status}`, "error");
+        setLoading("btn-link-do", false, "Connect for data");
+      }
+    },
+  });
+}
+
+function pollForDataOnlyEntity() {
+  waitForStatus(
+    (data) => !!data.dataOnlyEntityId,
+    (data) => {
+      dataOnlyEntityId = data.dataOnlyEntityId;
+      setStatusEl("status-do-link", "");
+      renderDataOnlyCard();
+    },
+    () => {
+      setStatusEl("status-do-link", "Webhook took too long — try refreshing the page.", "error");
+      setLoading("btn-link-do", false, "Connect for data");
     },
   );
 }
@@ -2164,27 +2340,39 @@ function pollForConsentLink() {
   );
 }
 
-// ─── RE / AOF TABS ──────────────────────────────────────────────────────────
-function renderReTab() {
-  const unlinked = document.getElementById("re-unlinked");
-  const linkedEl = document.getElementById("re-linked");
-  const successEl = document.getElementById("re-success");
+// ─── CONNECT & PAY / DATA ONLY / AOF CARDS ──────────────────────────────────
+function renderConnectPayCard() {
+  const unlinked = document.getElementById("cp-unlinked");
+  const linkedEl = document.getElementById("cp-linked");
 
   // Checked directly against entityId — NOT a shared linkedMethod — so
-  // this tab's linked state can never be clobbered by linking (or
-  // revoking) the OTHER rail on the AoF tab.
+  // this card's linked state can never be clobbered by linking (or
+  // revoking) another rail elsewhere in the app.
   if (!entityId) {
-    unlinked.style.display  = "block";
-    linkedEl.style.display  = "none";
-    successEl.style.display = "none";
+    unlinked.style.display = "block";
+    linkedEl.style.display = "none";
     return;
   }
   unlinked.style.display = "none";
-  if (successEl.style.display !== "flex") {
-    linkedEl.style.display = "block";
+  linkedEl.style.display = "block";
+  if (cpBankBalance === null) fetchConnectPayBalance();
+  else renderConnectPayBalanceDisplay();
+}
+
+function renderDataOnlyCard() {
+  const unlinked = document.getElementById("do-unlinked");
+  const linkedEl = document.getElementById("do-linked");
+
+  // Checked directly against dataOnlyEntityId — its own independent
+  // signal, never shared with Connect & Pay's entityId.
+  if (!dataOnlyEntityId) {
+    unlinked.style.display = "block";
+    linkedEl.style.display = "none";
+    return;
   }
-  if (reBankBalance === null) fetchBalance();
-  else renderReBalanceDisplay();
+  unlinked.style.display = "none";
+  linkedEl.style.display = "block";
+  loadDataOnlyAccounts();
 }
 
 function renderAofTab() {
@@ -2197,39 +2385,35 @@ function renderAofTab() {
 
   const unlinked = document.getElementById("aof-unlinked");
   const linkedEl = document.getElementById("aof-linked");
-  const successEl = document.getElementById("aof-success");
 
   // Checked directly against consentStatus — NOT a shared linkedMethod —
   // so this tab's linked state can never be clobbered by linking RE.
   if (consentStatus !== "AUTHORISED") {
-    unlinked.style.display  = "block";
-    linkedEl.style.display  = "none";
-    successEl.style.display = "none";
+    unlinked.style.display = "block";
+    linkedEl.style.display = "none";
     return;
   }
   unlinked.style.display = "none";
-  if (successEl.style.display !== "flex") {
-    linkedEl.style.display = "block";
-  }
+  linkedEl.style.display = "block";
   if (aofBankBalance === null) fetchBalanceOF();
   else renderAofBalanceDisplay();
   loadConsentDetails();
 }
 
-// RE and AoF each keep their OWN balance state now — they can be linked
-// (and hold genuinely different account balances) at the same time, so a
-// single shared bankBalance would have one tab silently overwrite the
+// Connect & Pay and AoF each keep their OWN balance state now — they can be
+// linked (and hold genuinely different account balances) at the same time,
+// so a single shared bankBalance would have one tab silently overwrite the
 // other's displayed number every time either one re-fetched.
 // Client-facing screens shouldn't surface the connected account's real bank
-// balance — it's still fetched and kept in reBankBalance/aofBankBalance
+// balance — it's still fetched and kept in cpBankBalance/aofBankBalance
 // (deposit validation against it below still uses the real number), just
 // never rendered as text. Masked with dots rather than removing the card
 // entirely, so "Live" + bank name still show it's genuinely connected.
-function renderReBalanceDisplay() {
-  const nameEl = document.getElementById("re-bank-name");
-  const valEl  = document.getElementById("re-balance-val");
-  if (nameEl) nameEl.textContent = reBankName || "Your bank";
-  if (valEl)  valEl.textContent  = reBankBalance !== null ? "•••••" : "—";
+function renderConnectPayBalanceDisplay() {
+  const nameEl = document.getElementById("cp-bank-name");
+  const valEl  = document.getElementById("cp-balance-val");
+  if (nameEl) nameEl.textContent = cpBankName || "Your bank";
+  if (valEl)  valEl.textContent  = cpBankBalance !== null ? "•••••" : "—";
 }
 
 function renderAofBalanceDisplay() {
@@ -2239,31 +2423,104 @@ function renderAofBalanceDisplay() {
   if (valEl)  valEl.textContent  = aofBankBalance !== null ? "•••••" : "—";
 }
 
-// RE balance
-async function fetchBalance() {
-  setStatus("re", "Fetching your live balance…");
+// Connect & Pay balance
+async function fetchConnectPayBalance() {
+  setStatus("cp", "Fetching your live balance…");
   try {
     const res  = await fetch(`${BACKEND}/api/balance?appUserId=${appUserId}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Balance fetch failed");
 
-    reBankBalance = data.amount;
-    reBankName    = data.bankName;
-    renderReBalanceDisplay();
+    cpBankBalance = data.amount;
+    cpBankName    = data.bankName;
+    renderConnectPayBalanceDisplay();
 
-    if (data.accountHolderName) showIdentity(data.accountHolderName, data.iban);
+    if (data.accountHolderName) showIdentity(data.accountHolderName, data.iban, "cp");
 
     if (!paymentSourceId) {
-      setStatus("re", "One more step: set up your payment method to enable RE deposits.", "");
-      document.getElementById("btn-setup-payments").style.display = "block";
+      setStatus("cp", "One more step: set up your payment method to enable deposits.", "");
+      document.getElementById("btn-cp-setup-payments").style.display = "block";
     } else if (beneficiaryStatus === "AWAITING_BENEFICIARY_COOL_OFF") {
-      setStatus("re", "Your payment method is still activating — this can take a moment in sandbox.", "");
+      setStatus("cp", "Your payment method is still activating — this can take a moment in sandbox.", "");
     } else {
-      setStatus("re", "");
+      setStatus("cp", "");
     }
   } catch (err) {
-    setStatus("re", `Couldn't load balance: ${err.message}`, "error");
+    setStatus("cp", `Couldn't load balance: ${err.message}`, "error");
     console.error("Balance error:", err);
+  }
+}
+
+// Data Only — proof-of-data-access accounts + identity + recent transactions
+// (no balance masking here; unlike Connect & Pay/AoF's client-facing deposit
+// screens, this card's entire purpose is showing what data access looks like).
+async function loadDataOnlyAccounts() {
+  const idEl = document.getElementById("do-identity-table");
+  const el   = document.getElementById("do-accounts-list");
+  const txEl = document.getElementById("do-transactions-list");
+  idEl.innerHTML = "";
+  el.innerHTML   = '<div class="tx-empty">Loading accounts…</div>';
+  txEl.innerHTML = "";
+  try {
+    const res  = await fetch(`${BACKEND}/api/dataonly/accounts?appUserId=${appUserId}`);
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || "Could not load accounts");
+
+    const accounts = data.accounts || [];
+    if (!accounts.length) { el.innerHTML = '<div class="tx-empty">No accounts found</div>'; return; }
+
+    if (data.identity?.name) {
+      idEl.innerHTML = `
+        <table class="recon-table">
+          <tbody>
+            <tr><td style="color:var(--text-3);">Name</td><td>${data.identity.name}</td></tr>
+            ${data.identity.email ? `<tr><td style="color:var(--text-3);">Email</td><td>${data.identity.email}</td></tr>` : ""}
+            ${data.identity.phone ? `<tr><td style="color:var(--text-3);">Phone</td><td>${data.identity.phone}</td></tr>` : ""}
+          </tbody>
+        </table>
+      `;
+    } else {
+      idEl.innerHTML = '<div class="tx-empty">No identity data</div>';
+    }
+
+    const accountRows = accounts.map(a => `
+      <tr>
+        <td>${a.bankName}</td>
+        <td>${a.iban || "—"}</td>
+        <td style="text-align:right; font-weight:700;">${a.currency || "AED"} ${a.amount !== null ? fmt(a.amount) : "—"}</td>
+      </tr>
+    `).join("");
+    el.innerHTML = `
+      <table class="recon-table">
+        <thead><tr><th>Account</th><th>IBAN</th><th style="text-align:right;">Balance</th></tr></thead>
+        <tbody>${accountRows}</tbody>
+      </table>
+    `;
+
+    const transactions = data.transactions || [];
+    if (!transactions.length) {
+      txEl.innerHTML = '<div class="tx-empty">No recent transactions</div>';
+    } else {
+      const rows = transactions.map(t => `
+        <tr>
+          <td>${fmtDate(t.date)}</td>
+          <td>${t.description}</td>
+          <td>${t.bankName}</td>
+          <td style="text-align:right; font-weight:700; color:${t.direction === "CREDIT" ? "var(--emerald)" : "var(--text)"};">${t.direction === "CREDIT" ? "+" : "-"}${t.currency || "AED"} ${fmt(t.amount || 0)}</td>
+        </tr>
+      `).join("");
+      txEl.innerHTML = `
+        <table class="recon-table">
+          <thead><tr><th>Date</th><th>Description</th><th>Account</th><th style="text-align:right;">Amount</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    setStatus("do", "");
+  } catch (err) {
+    el.innerHTML = `<div class="tx-empty">Could not load accounts: ${err.message}</div>`;
+    console.error("Data Only accounts error:", err);
   }
 }
 
@@ -2386,9 +2643,9 @@ function desktopManageConsents() {
   });
 }
 
-// ─── PAYMENTS SETUP (RE only — separate from Data linking) ──────────────────
-function setupPayments() {
-  setStatus("re","Setting up your payment method…");
+// ─── PAYMENTS SETUP (Connect & Pay only — separate from Data linking) ──────
+function setupConnectPayPayments() {
+  setStatus("cp","Setting up your payment method…");
 
   callLeanSdk("Lean.connect() — payment method setup", Lean.connect.bind(Lean), {
     app_token:    APP_TOKEN,
@@ -2400,12 +2657,12 @@ function setupPayments() {
     callback: async (payload) => {
       console.log("[Lean.connect — payments] Callback payload:", payload);
       if (payload.status === "SUCCESS") {
-        setStatus("re","Payment method linked! Activating…");
+        setStatus("cp","Payment method linked! Activating…");
         await pollForPaymentSource();
       } else if (payload.status === "CANCELLED") {
-        setStatus("re","Payment setup cancelled. You can retry from the Deposit step.", "error");
+        setStatus("cp","Payment setup cancelled. You can retry from the Deposit step.", "error");
       } else {
-        setStatus("re",`Payment setup failed: ${payload.message || payload.status}`, "error");
+        setStatus("cp",`Payment setup failed: ${payload.message || payload.status}`, "error");
       }
     },
   });
@@ -2417,39 +2674,39 @@ function pollForPaymentSource() {
     (data) => {
       paymentSourceId   = data.paymentSourceId;
       beneficiaryStatus = data.beneficiaryStatus;
-      document.getElementById("btn-setup-payments").style.display = "none";
+      document.getElementById("btn-cp-setup-payments").style.display = "none";
 
       if (beneficiaryStatus === "ACTIVE") {
-        setStatus("re","");
+        setStatus("cp","");
       } else {
         // Two-stage: the payment source exists but its beneficiary is still
         // cooling off — wait for a SECOND push where it flips to ACTIVE.
-        setStatus("re","Payment method activating — almost ready…");
+        setStatus("cp","Payment method activating — almost ready…");
         waitForStatus(
           (d) => d.beneficiaryStatus === "ACTIVE" && !!d.paymentSourceId,
-          (d) => { beneficiaryStatus = d.beneficiaryStatus; setStatus("re",""); },
-          () => setStatus("re","Payment setup webhook took too long — try refreshing.", "error"),
+          (d) => { beneficiaryStatus = d.beneficiaryStatus; setStatus("cp",""); },
+          () => setStatus("cp","Payment setup webhook took too long — try refreshing.", "error"),
         );
       }
     },
-    () => setStatus("re","Payment setup webhook took too long — try refreshing.", "error"),
+    () => setStatus("cp","Payment setup webhook took too long — try refreshing.", "error"),
   );
 }
 
 // ─── DEPOSIT ────────────────────────────────────────────────────────────────
-// RE and AoF each link and deposit right on their own tab now — no shared
-// method picker, no separate Home tab. Each amount field/button only ever
-// talks to its own rail.
-function handleReDeposit() {
-  const amount = parseFloat(document.getElementById("re-deposit-amount").value);
-  if (!amount || amount <= 0) { setStatus("re", "Enter a deposit amount to continue.", "error"); return; }
-  if (reBankBalance !== null && amount > reBankBalance) {
-    setStatus("re", "Amount exceeds your available bank balance.", "error");
+// Connect & Pay and AoF each link and deposit right on their own card now —
+// no shared method picker, no separate Home tab. Each amount field/button
+// only ever talks to its own rail.
+function handleConnectPayDeposit() {
+  const amount = parseFloat(document.getElementById("cp-deposit-amount").value);
+  if (!amount || amount <= 0) { setStatus("cp", "Enter a deposit amount to continue.", "error"); return; }
+  if (cpBankBalance !== null && amount > cpBankBalance) {
+    setStatus("cp", "Amount exceeds your available bank balance.", "error");
     return;
   }
-  const reference = document.getElementById("re-reference").value.trim();
-  setStatus("re", "");
-  handleDepositRE(amount, reference);
+  const reference = document.getElementById("cp-reference").value.trim();
+  setStatus("cp", "");
+  depositViaConnectPay(amount, reference);
 }
 
 function handleAofDeposit() {
@@ -2468,19 +2725,19 @@ function handleAofDeposit() {
   handleDepositOF(amount, reference);
 }
 
-// RE deposit — payment intent + Lean.pay()
-async function handleDepositRE(amount, reference) {
+// Connect & Pay deposit — payment intent + Lean.pay()
+async function depositViaConnectPay(amount, reference) {
   if (!paymentSourceId) {
-    setStatus("re", "Please set up your payment method first using the button above.", "error");
+    setStatus("cp", "Please set up your payment method first using the button above.", "error");
     return;
   }
   if (beneficiaryStatus === "AWAITING_BENEFICIARY_COOL_OFF") {
-    setStatus("re", "Your payment method is still activating. Please try again shortly.", "error");
+    setStatus("cp", "Your payment method is still activating. Please try again shortly.", "error");
     return;
   }
 
-  setLoading("btn-re-deposit", true, "Deposit funds");
-  setStatus("re", "Creating payment…");
+  setLoading("btn-cp-deposit", true, "Deposit funds");
+  setStatus("cp", "Creating payment…");
 
   try {
     const intentRes = await fetch(`${BACKEND}/api/payment-intent`, {
@@ -2490,9 +2747,9 @@ async function handleDepositRE(amount, reference) {
     const intentData = await intentRes.json();
     if (!intentRes.ok) throw new Error(intentData.error || "Payment intent failed");
 
-    setStatus("re", "Awaiting bank confirmation…");
+    setStatus("cp", "Awaiting bank confirmation…");
 
-    callLeanSdk("Lean.pay() — RE deposit", Lean.pay.bind(Lean), {
+    callLeanSdk("Lean.pay() — Connect & Pay deposit", Lean.pay.bind(Lean), {
       app_token:          APP_TOKEN,
       payment_intent_id:  intentData.paymentIntentId,
       access_token:       accessToken,
@@ -2503,19 +2760,19 @@ async function handleDepositRE(amount, reference) {
       callback: async (payload) => {
         console.log("[Lean.pay] Callback payload:", payload);
         if (payload.status === "SUCCESS" || payload.status === "PENDING") {
-          showDepositSuccess(amount, "RE");
+          showDepositSuccess(amount, "CP");
         } else if (payload.status === "CANCELLED") {
-          setStatus("re", "Payment cancelled.");
-          setLoading("btn-re-deposit", false, "Deposit funds");
+          setStatus("cp", "Payment cancelled.");
+          setLoading("btn-cp-deposit", false, "Deposit funds");
         } else {
-          setStatus("re", `Payment failed: ${payload.message || payload.status}`, "error");
-          setLoading("btn-re-deposit", false, "Deposit funds");
+          setStatus("cp", `Payment failed: ${payload.message || payload.status}`, "error");
+          setLoading("btn-cp-deposit", false, "Deposit funds");
         }
       },
     });
   } catch (err) {
-    setStatus("re", `Error: ${err.message}`, "error");
-    setLoading("btn-re-deposit", false, "Deposit funds");
+    setStatus("cp", `Error: ${err.message}`, "error");
+    setLoading("btn-cp-deposit", false, "Deposit funds");
     console.error("Deposit error:", err);
   }
 }
@@ -2670,58 +2927,331 @@ function pollForSipPayment() {
   );
 }
 
+// ─── SIP + AOF TOGETHER — both funding rails on one screen ─────────────────
+// Shares the SAME consentId/consentStatus as the standalone AoF tab (this is
+// intentional — it's the same standing consent, just offered alongside SIP
+// here). Mirrors the mobile preview's Deposits tab: one amount field, AoF
+// as the recommended primary action, SIP as the no-commitment fallback that
+// disappears once AoF is authorised.
+function setSipAofAmount(v) { document.getElementById("sipaof-amount").value = v; }
+
+function renderSipAofCard() {
+  const ofBtn   = document.getElementById("sipaof-of-btn");
+  const ofBadge = document.getElementById("sipaof-of-badge");
+  const sipBtn  = document.getElementById("sipaof-sip-btn");
+  if (consentStatus === "AUTHORISED") {
+    ofBtn.textContent = "Pay via AoF";
+    ofBadge.style.display = "none";
+    sipBtn.style.display = "none";
+  } else {
+    ofBtn.textContent = "Link & pay via AoF";
+    ofBadge.style.display = "inline-block";
+    sipBtn.style.display = "block";
+  }
+}
+
+function sipAofHandleOfPrimary() {
+  if (consentStatus === "AUTHORISED") sipAofPayByBank();
+  else sipAofConnectOF();
+}
+
+async function sipAofConnectOF() {
+  const amount = parseFloat(document.getElementById("sipaof-amount").value);
+  if (!amount || amount <= 0) { setStatus("sipaof", "Enter a deposit amount to continue.", "error"); return; }
+  if (!customerId) { setStatus("sipaof", "Still initialising — please wait a moment.", "error"); return; }
+
+  // Persisted across the bank redirect (which fully reloads the page and
+  // wipes this input) so the payment can fire automatically once connected,
+  // instead of asking the customer to re-enter the same amount twice.
+  sessionStorage.setItem("sipaof_pending_amount", amount);
+
+  setLoading("sipaof-of-btn", true, "Link & pay via AoF");
+  setStatus("sipaof", "Creating Open Finance consent…");
+
+  try {
+    const res  = await fetch(`${BACKEND}/api/of/create-consent`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Consent creation failed");
+
+    consentId = data.consentId;
+    if (data.accessToken) accessToken = data.accessToken;
+
+    setStatus("sipaof", "Opening bank authorization…");
+
+    callLeanSdk("Lean.authorizeConsent() — SIP+AoF card", Lean.authorizeConsent.bind(Lean), {
+      app_token:            APP_TOKEN,
+      customer_id:          customerId,
+      consent_id:           consentId,
+      access_token:         accessToken,
+      sandbox:              true,
+      // via=sipaof lets init() tell — after the browser redirects back from
+      // the bank — to resume on the Integrations page's SIP+AoF card instead
+      // of the standalone desktop AoF tab.
+      success_redirect_url: `${REDIRECT_BASE}?of_status=SUCCESS&ts_user_id=${appUserId}&via=sipaof`,
+      fail_redirect_url:    `${REDIRECT_BASE}?of_status=FAILED&ts_user_id=${appUserId}&via=sipaof`,
+
+      callback: async (payload) => {
+        console.log("[Lean.authorizeConsent — SIP+AoF] Callback payload:", payload);
+        if (payload.status === "SUCCESS") {
+          setStatus("sipaof", "Bank connected! Completing your payment…", "ok");
+          await pollForSipAofConsentLink();
+        } else if (payload.status === "CANCELLED") {
+          sessionStorage.removeItem("sipaof_pending_amount");
+          setStatus("sipaof", "Authorization cancelled.");
+          setLoading("sipaof-of-btn", false, "Link & pay via AoF");
+        } else {
+          sessionStorage.removeItem("sipaof_pending_amount");
+          setStatus("sipaof", `Authorization failed: ${payload.message || payload.status}`, "error");
+          setLoading("sipaof-of-btn", false, "Link & pay via AoF");
+        }
+      },
+    });
+  } catch (err) {
+    sessionStorage.removeItem("sipaof_pending_amount");
+    setStatus("sipaof", `Error: ${err.message}`, "error");
+    setLoading("sipaof-of-btn", false, "Link & pay via AoF");
+    console.error("[SIP+AoF] OF consent error:", err);
+  }
+}
+
+function pollForSipAofConsentLink() {
+  waitForStatus(
+    (data) => data.consentStatus === "AUTHORISED",
+    (data) => {
+      consentId     = data.consentId;
+      consentStatus = data.consentStatus;
+      renderAofTab();
+      completeSipAofAutoPayment();
+    },
+    () => {
+      setStatus("sipaof", "Consent webhook took too long — try refreshing.", "error");
+      setLoading("sipaof-of-btn", false, "Link & pay via AoF");
+    },
+  );
+}
+
+// Once the consent that was created FOR a specific amount comes back
+// authorised, pay immediately with that same amount instead of making the
+// customer re-enter it and click again — the confirmation screen this
+// produces (via showDepositSuccess) IS the "bank connected" confirmation.
+async function completeSipAofAutoPayment() {
+  const stored = sessionStorage.getItem("sipaof_pending_amount");
+  const amount = stored ? parseFloat(stored) : parseFloat(document.getElementById("sipaof-amount")?.value);
+  sessionStorage.removeItem("sipaof_pending_amount");
+
+  if (!amount || amount <= 0) {
+    // No pending amount to auto-pay with (e.g. consent was already linked
+    // from elsewhere) — just show the connected state.
+    setStatus("sipaof", "");
+    renderSipAofCard();
+    return;
+  }
+  document.getElementById("sipaof-amount").value = amount;
+  setStatus("sipaof", "Bank connected! Completing your payment…", "ok");
+  await sipAofPayByBank();
+}
+
+// Fund via the already-authorized consent — same rail as the AoF tab.
+async function sipAofPayByBank() {
+  const amount = parseFloat(document.getElementById("sipaof-amount").value);
+  if (!amount || amount <= 0) { setStatus("sipaof", "Enter a deposit amount to continue.", "error"); return; }
+  if (!consentId || consentStatus !== "AUTHORISED") { setStatus("sipaof", "Bank not connected yet.", "error"); return; }
+
+  setLoading("sipaof-of-btn", true, "Pay via AoF");
+  setStatus("sipaof", "Initiating Open Finance payment…");
+
+  try {
+    const res  = await fetch(`${BACKEND}/api/of/pay`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId, amount }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "OF payment failed");
+
+    if (data.status === "PROCESSED" || data.status === "CREATED" || data.status === "PROCESSING") {
+      showDepositSuccess(amount, "SIPAOF");
+    } else {
+      setStatus("sipaof", `Payment ${data.status} — please try again.`, "error");
+      setLoading("sipaof-of-btn", false, "Pay via AoF");
+    }
+  } catch (err) {
+    setStatus("sipaof", `Error: ${err.message}`, "error");
+    setLoading("sipaof-of-btn", false, "Pay via AoF");
+    console.error("[SIP+AoF] OF deposit error:", err);
+  }
+}
+
+// Standalone SIP checkout — same rail as the SIP tab, offered here as the
+// no-commitment fallback for a customer who hasn't authorised AoF (yet).
+async function sipAofSipTopUp() {
+  const amount = parseFloat(document.getElementById("sipaof-amount").value);
+  if (!customerId) { setStatus("sipaof", "Session not ready — please refresh.", "error"); return; }
+  if (!amount || amount <= 0) { setStatus("sipaof", "Enter a deposit amount to continue.", "error"); return; }
+
+  setLoading("sipaof-sip-btn", true, "Pay via SIP (one-off)");
+  setStatus("sipaof", "Creating payment intent…");
+
+  try {
+    const intentRes = await fetch(`${BACKEND}/api/sip/payment-intent`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId, amount, currency: "AED" }),
+    });
+    const intentData = await intentRes.json();
+    if (!intentRes.ok) throw new Error(intentData.error || "Payment intent failed");
+    if (intentData.accessToken) accessToken = intentData.accessToken;
+
+    setStatus("sipaof", "Opening bank authorisation…");
+
+    const checkoutFn = (window.LeanV2?.checkout || window.Lean?.checkout)?.bind(window.LeanV2 || window.Lean);
+    if (!checkoutFn) throw new Error("Lean SDK not loaded — refresh and try again.");
+
+    callLeanSdk("Lean.checkout() — SIP+AoF card", checkoutFn, {
+      app_token:           APP_TOKEN,
+      payment_intent_id:   intentData.paymentIntentId,
+      access_token:        accessToken,
+      sandbox:             true,
+      success_redirect_url: `${REDIRECT_BASE}?sip_status=SUCCESS&ts_user_id=${appUserId}&via=sipaof`,
+      fail_redirect_url:    `${REDIRECT_BASE}?sip_status=FAILED&ts_user_id=${appUserId}&via=sipaof`,
+      risk_details: { transaction_indicators: { channel: "WEB" } },
+      callback: (payload) => {
+        console.log("[Lean.checkout — SIP+AoF] Callback:", payload);
+        if (payload.status === "SUCCESS" || payload.status === "PENDING") {
+          showDepositSuccess(amount, "SIPAOF");
+        } else if (payload.status === "REDIRECT") {
+          setStatus("sipaof", "Redirecting to your bank…");
+        } else if (payload.status === "CANCELLED") {
+          setStatus("sipaof", "Payment cancelled.");
+          setLoading("sipaof-sip-btn", false, "Pay via SIP (one-off)");
+        } else {
+          setStatus("sipaof", `Payment failed: ${payload.message || payload.status}`, "error");
+          setLoading("sipaof-sip-btn", false, "Pay via SIP (one-off)");
+        }
+      },
+    });
+  } catch (err) {
+    setStatus("sipaof", `Error: ${err.message}`, "error");
+    setLoading("sipaof-sip-btn", false, "Pay via SIP (one-off)");
+    console.error("[SIP+AoF] SIP error:", err);
+  }
+}
+
+async function handleSipAofRedirectReturn(redirectParams = {}) {
+  setStatus("sipaof", "Verifying your payment…", "ok");
+  try {
+    const captureFn = (window.LeanV2?.captureRedirect || window.Lean?.captureRedirect)?.bind(window.LeanV2 || window.Lean);
+    if (captureFn) {
+      callLeanSdk("captureRedirect() — SIP+AoF redirect return", captureFn, {
+        app_token:              APP_TOKEN,
+        customer_id:            customerId,
+        access_token:           accessToken,
+        sandbox:                true,
+        bank_identifier:        redirectParams.bankIdentifier ?? undefined,
+        consent_attempt_id:     redirectParams.consentAttemptId ?? undefined,
+        granular_status_code:   redirectParams.granularStatusCode ?? undefined,
+        status_additional_info: redirectParams.statusAdditionalInfo ?? undefined,
+        callback: (payload) => {
+          console.log("[captureRedirect — SIP+AoF] Callback:", payload);
+          if (payload.status === "SUCCESS") {
+            setStatus("sipaof", "Payment authorised! Waiting for confirmation…", "ok");
+          }
+        },
+      });
+    }
+  } catch (e) {
+    console.warn("[SIP+AoF] captureRedirect error:", e);
+  }
+  pollForSipAofPayment();
+}
+
+function pollForSipAofPayment() {
+  waitForStatus(
+    (data) => data.tradingBalance > tradingBalance,
+    (data) => {
+      const deposited = data.tradingBalance - tradingBalance;
+      showDepositSuccess(deposited, "SIPAOF");
+    },
+    () => setStatus("sipaof", "Payment is being processed. Check back shortly.", ""),
+  );
+}
+
+// ─── INTEGRATIONS PAGE — grid ↔ demo detail switching ──────────────────────
+function openIntegrationDemo(demo) {
+  if (demo === "AOF") { switchPage("AOF"); return; }
+  if (demo === "SIP") { switchPage("SIP"); return; }
+
+  document.getElementById("integrations-grid").style.display = "none";
+  document.getElementById("integrations-detail").style.display = "block";
+  ["CONNECTPAY", "DATAONLY", "SIPAOF"].forEach(d => {
+    document.getElementById("demo-" + d).style.display = d === demo ? (d === "CONNECTPAY" ? "grid" : "block") : "none";
+  });
+
+  if (demo === "CONNECTPAY") renderConnectPayCard();
+  if (demo === "DATAONLY")   renderDataOnlyCard();
+  if (demo === "SIPAOF")     renderSipAofCard();
+}
+
+function closeIntegrationDemo() {
+  document.getElementById("integrations-grid").style.display = "block";
+  document.getElementById("integrations-detail").style.display = "none";
+}
+
 const DEPOSIT_TABS = {
-  RE:  { amountInput: "re-deposit-amount",  referenceInput: "re-reference",  btn: "btn-re-deposit",  statusKey: "re",  linked: "re-linked",  success: "re-success",  successAmount: "re-success-amount",  tradingBalance: "re-trading-balance-disp" },
-  AOF: { amountInput: "aof-deposit-amount", referenceInput: "aof-reference", btn: "btn-aof-deposit", statusKey: "aof", linked: "aof-linked", success: "aof-success", successAmount: "aof-success-amount", tradingBalance: "aof-trading-balance-disp" },
+  CP:  { amountInput: "cp-deposit-amount",  referenceInput: "cp-reference",  btn: "btn-cp-deposit",  statusKey: "cp" },
+  AOF: { amountInput: "aof-deposit-amount", referenceInput: "aof-reference", btn: "btn-aof-deposit", statusKey: "aof" },
 };
 
+// Shows the shared payment-success popup over whatever screen just finished
+// a deposit, and resets that screen's own form in place — no more swapping
+// to a separate "success" card that needed its own back/reset navigation.
 function showDepositSuccess(amount, source = "AOF") {
   tradingBalance += amount;
   document.getElementById("header-balance").style.display = "flex";
   document.getElementById("header-balance-val").textContent = `AED ${fmt(tradingBalance)}`;
 
   if (source === "SIP") {
-    document.getElementById("sip-success-amount").textContent = `AED ${fmt(amount)}`;
-    document.getElementById("sip-form-card").style.display = "none";
-    document.getElementById("sip-success-card").style.display = "flex";
+    document.getElementById("sip-standalone-amount").value = "";
+    document.getElementById("sip-reference").value = "";
+    setStatus("sip-standalone", "");
+    setLoading("btn-sip-standalone", false, "Checkout via SIP");
+  } else if (source === "SIPAOF") {
+    document.getElementById("sipaof-amount").value = "";
+    setStatus("sipaof", "");
+    setLoading("sipaof-of-btn", false, "Pay via AoF");
+    setLoading("sipaof-sip-btn", false, "Pay via SIP (one-off)");
+    renderSipAofCard();
   } else {
     const cfg = DEPOSIT_TABS[source];
-    document.getElementById(cfg.successAmount).textContent = `AED ${fmt(amount)}`;
-    document.getElementById(cfg.tradingBalance).textContent = `AED ${fmt(tradingBalance)}`;
-    document.getElementById(cfg.linked).style.display  = "none";
-    document.getElementById(cfg.success).style.display = "flex";
+    document.getElementById(cfg.amountInput).value = "";
+    document.getElementById(cfg.referenceInput).value = "";
+    setStatus(cfg.statusKey, "");
+    setLoading(cfg.btn, false, "Deposit funds");
   }
 
+  showPaymentSuccessModal(amount);
   setTimeout(loadReconciliation, 3000);
 }
 
-function resetSipStandalone() {
-  document.getElementById("sip-standalone-amount").value = "";
-  document.getElementById("sip-reference").value = "";
-  setStatus("sip-standalone", "");
-  setLoading("btn-sip-standalone", false, "Checkout via SIP");
-  document.getElementById("sip-success-card").style.display = "none";
-  document.getElementById("sip-form-card").style.display = "block";
+function showPaymentSuccessModal(amount) {
+  document.getElementById("payment-success-amount").textContent = `AED ${fmt(amount)}`;
+  document.getElementById("payment-success-balance").textContent = `AED ${fmt(tradingBalance)}`;
+  document.getElementById("payment-success-overlay").classList.add("open");
 }
 
-function resetDeposit(source) {
-  const cfg = DEPOSIT_TABS[source];
-  document.getElementById(cfg.amountInput).value = "";
-  document.getElementById(cfg.referenceInput).value = "";
-  setStatus(cfg.statusKey, "");
-  setLoading(cfg.btn, false, "Deposit funds");
-  document.getElementById(cfg.success).style.display = "none";
-  document.getElementById(cfg.linked).style.display  = "block";
+function closePaymentSuccessModal() {
+  document.getElementById("payment-success-overlay").classList.remove("open");
 }
 
 
 // ─── IDENTITY & INNER TABS ---------------------------------------------------
-function showIdentity(name, iban) {
+function showIdentity(name, iban, prefix = "cp") {
   if (!name) return;
-  const card = document.getElementById("identity-card");
+  const card = document.getElementById(`${prefix}-identity-card`);
   if (!card) return;
-  document.getElementById("identity-name").textContent = name;
-  document.getElementById("identity-iban").textContent = iban ? "IBAN: " + iban : "";
+  document.getElementById(`${prefix}-identity-name`).textContent = name;
+  document.getElementById(`${prefix}-identity-iban`).textContent = iban ? "IBAN: " + iban : "";
   card.style.display = "flex";
 }
 
@@ -3524,13 +4054,31 @@ async function toggleLinkUsages(linkId) {
 }
 
 const INFO_CONTENT = {
-  RE: {
-    eyebrow: "Reverse Engineering",
+  INTEGRATIONS: {
+    eyebrow: "Client Integration Patterns",
+    title:   "Why Integrations?",
+    bullets: [
+      "Different clients connect differently — some link once and pay repeatedly, others only need data, others just want a one-off checkout",
+      "Every card here demos a real, distinct LinkSDK call pattern — nothing here is faked or simplified beyond what a client would actually implement",
+      "AoF Only and SIP Only reuse this app's existing AoF/SIP tabs — the rest are self-contained demos",
+    ],
+  },
+  CP: {
+    eyebrow: "Connect & Pay",
     title:   "Why deposit here?",
     bullets: [
-      "Moves money from your RE-linked bank into your TradeStart balance",
+      "Moves money from your linked bank into your TradeStart balance",
       "Uses Lean.pay() against the payment method you set up here",
-      "Link and deposit both happen right here — AoF has its own separate tab",
+      "Link and deposit both happen on the same screen — one Lean.connect() call for both",
+    ],
+  },
+  DATAONLY: {
+    eyebrow: "Data Only",
+    title:   "Why Data Only?",
+    bullets: [
+      "Lean.connect() here requests only identity, accounts, balance and transactions — never payments",
+      "No payment_destination_id is ever passed, so this entity can't be charged even if you wanted to",
+      "Good fit for KYC, affordability checks, or any use case that only needs to read bank data",
     ],
   },
   AOF: {

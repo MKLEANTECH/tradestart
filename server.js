@@ -62,8 +62,10 @@ const PAYOUT_STARTING_BALANCE = 50000;
 const store = {
   // "appUserId": {
   //   customerId, tradingBalance, payoutBalance,
-  //   -- RE fields --
+  //   -- Connect & Pay fields --
   //   entityId, accountId, paymentSourceId, beneficiaryStatus,
+  //   -- Data Only field (its own independent entity) --
+  //   dataOnlyEntityId,
   //   -- OF fields --
   //   consentId, consentStatus,
   //   -- shared --
@@ -87,10 +89,12 @@ const sseClients = {};
 // means the two can never drift into returning different shapes.
 function buildStatusPayload(user) {
   return {
-    // RE fields
+    // Connect & Pay fields
     entityId:          user.entityId,
     paymentSourceId:   user.paymentSourceId,
     beneficiaryStatus: user.beneficiaryStatus,
+    // Data Only field — its own independent entity, never the same one as above
+    dataOnlyEntityId:  user.dataOnlyEntityId,
     // OF fields
     consentId:         user.consentId,
     consentStatus:     user.consentStatus,
@@ -286,7 +290,7 @@ app.post("/api/init", async (req, res) => {
       }
 
       // Start with a blank slate
-      user = { customerId, entityId: null, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
+      user = { customerId, entityId: null, dataOnlyEntityId: null, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
       store[appUserId] = user;
 
       // After a restart recovery, try to restore entityId and paymentSourceId
@@ -295,10 +299,19 @@ app.post("/api/init", async (req, res) => {
         try {
           const entitiesResp = await leanFetch(`/customers/v1/${customerId}/entities`);
           const entities = Array.isArray(entitiesResp) ? entitiesResp : entitiesResp?.payload || [];
-          if (entities.length > 0) {
-            user.entityId = entities[0].id;
-            console.log(`[Init] Restored entity_id ${user.entityId} from Lean API`);
+          // A customer can now hold up to two entities — one from Connect &
+          // Pay's full-permission Lean.connect() call, one from Data Only's
+          // restricted call. Classify each by its permission set (see the
+          // same check in the entity.created webhook handler below) instead
+          // of assuming entities[0] is the one and only entity.
+          for (const entity of entities) {
+            const p = entity.permissions || {};
+            const isFullAccess = p.beneficiaries || p.standing_orders || p.direct_debits || p.scheduled_payments;
+            if (isFullAccess) user.entityId = entity.id;
+            else user.dataOnlyEntityId = entity.id;
           }
+          if (user.entityId) console.log(`[Init] Restored Connect & Pay entity_id ${user.entityId} from Lean API`);
+          if (user.dataOnlyEntityId) console.log(`[Init] Restored Data Only entity_id ${user.dataOnlyEntityId} from Lean API`);
         } catch (e) {
           console.warn(`[Init] Could not restore entity_id:`, e.message);
         }
@@ -344,6 +357,7 @@ app.post("/api/init", async (req, res) => {
       customerId:        user.customerId,
       accessToken:       customerToken,
       entityId:          user.entityId,
+      dataOnlyEntityId:  user.dataOnlyEntityId,
       paymentSourceId:   user.paymentSourceId,
       beneficiaryStatus: user.beneficiaryStatus,
       consentId:         user.consentId,
@@ -477,7 +491,7 @@ app.post("/api/payment-intent", async (req, res) => {
       intentId:    intent.payment_intent_id,
       amount:      parseFloat(amount),
       currency,
-      rail:        "RE",
+      rail:        "CP",
       initiatedAt: new Date().toISOString(),
       status:      "PENDING",
     });
@@ -529,9 +543,35 @@ app.post("/webhooks/lean", (req, res) => {
         ([, u]) => u.customerId === customer_id
       );
       if (entry) {
-        entry[1].entityId = entityId;
-        touchedAppUserId = entry[0];
-        console.log(`[Webhook] Stored entity_id ${entityId} for customer ${customer_id}`);
+        const [foundAppUserId, user] = entry;
+        // A customer can now produce TWO entities that both land here with
+        // the same customer_id — Connect & Pay's full-permission
+        // Lean.connect() call, and Data Only's restricted one. The webhook
+        // payload alone doesn't say which; fetch the real Entity record
+        // (which does carry a `permissions` object) and classify by it
+        // instead of guessing. Done fire-and-forget so the webhook ack
+        // below isn't held up by this extra round trip — a fresh SSE
+        // snapshot goes out once classification resolves.
+        leanFetch(`/customers/v1/${customer_id}/entities/${entityId}`)
+          .then((entity) => {
+            const p = entity.permissions || {};
+            const isFullAccess = p.beneficiaries || p.standing_orders || p.direct_debits || p.scheduled_payments;
+            if (isFullAccess) {
+              user.entityId = entityId;
+              console.log(`[Webhook] Stored Connect & Pay entity_id ${entityId} for customer ${customer_id}`);
+            } else {
+              user.dataOnlyEntityId = entityId;
+              console.log(`[Webhook] Stored Data Only entity_id ${entityId} for customer ${customer_id}`);
+            }
+            pushStatusUpdate(foundAppUserId);
+          })
+          .catch((e) => {
+            // Can't classify — default to Connect & Pay's field, since
+            // that's the mechanism most of this app's payment demos need.
+            user.entityId = entityId;
+            console.warn(`[Webhook] Could not classify entity ${entityId}, defaulting to Connect & Pay:`, e.message);
+            pushStatusUpdate(foundAppUserId);
+          });
       } else {
         console.warn(`[Webhook] No user found for customer_id ${customer_id}`);
       }
@@ -606,7 +646,7 @@ app.post("/webhooks/lean", (req, res) => {
                 intentId:    intent_id || null,
                 amount:      parseFloat(amount),
                 currency:    currency || "AED",
-                rail:        event.payload.consent_id ? "OF" : "RE",
+                rail:        event.payload.consent_id ? "OF" : "CP",
                 scheduleRef, // null unless Lean's payload happens to include it — unconfirmed field name
                 initiatedAt: event.timestamp || new Date().toISOString(),
                 status,
@@ -1430,6 +1470,102 @@ app.get("/api/identity", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DATA ONLY — separate Lean.connect() entity, no payment permission at all.
+// See dataOnlyEntityId on the user record, and the entity.created webhook
+// handler above for how it's told apart from the Connect & Pay entity.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/dataonly/accounts?appUserId=xxx
+ *
+ * Proof-of-data-access display for the Data Only card: identity + every
+ * account this entity can see (each with its live balance) + the 10 most
+ * recent transactions across all of them.
+ *
+ * NOTE: the comment above /api/identity says this app dropped Mockbank
+ * transaction history entirely because it was confusing to test with and
+ * unrelated to deposits made through this app — that decision was about
+ * THIS app's own deposit-tracking screens. The Data Only card's whole
+ * purpose is demonstrating breadth of data access, so transactions are
+ * deliberately brought back here, scoped to this one card only.
+ */
+app.get("/api/dataonly/accounts", async (req, res) => {
+  try {
+    const { appUserId } = req.query;
+    const user = store[appUserId];
+    if (!user?.dataOnlyEntityId) return res.status(400).json({ error: "No Data Only bank linked for this user" });
+
+    const accountsResp = await leanFetch(`/data/v2/accounts?entity_id=${user.dataOnlyEntityId}`);
+    if (accountsResp.status !== "OK") {
+      return res.status(502).json({ error: "Could not fetch accounts", detail: accountsResp });
+    }
+
+    const accounts = accountsResp.data?.accounts || [];
+    if (!accounts.length) return res.status(404).json({ error: "No accounts found" });
+
+    let identity = null;
+    try {
+      const identityResp = await leanFetch(`/data/v2/identity?entity_id=${user.dataOnlyEntityId}`, { silent: true });
+      const idy = identityResp.data?.identities?.[0];
+      if (idy) identity = { name: idy.full_legal_name || idy.name, email: idy.email_address || null, phone: idy.mobile_number || idy.phone || null };
+    } catch (e) {
+      console.warn(`[Data Only] Could not fetch identity:`, e.message);
+    }
+
+    let allTransactions = [];
+    const enriched = await Promise.all(accounts.map(async (account) => {
+      const ibanEntry = account.account?.find(a => a.scheme_name === "IBAN");
+      let amount = null, currency = null;
+      try {
+        const balResp = await leanFetch(
+          `/data/v2/accounts/${account.account_id}/balances?entity_id=${user.dataOnlyEntityId}`,
+          { silent: true },
+        );
+        const balances = balResp.data?.balances || [];
+        const preferred = balances.find(b => b.type === "INTERIM_AVAILABLE")
+                       || balances.find(b => b.type === "CLOSING_AVAILABLE")
+                       || balances[0];
+        if (preferred) { amount = preferred.amount.amount; currency = preferred.amount.currency; }
+      } catch (e) {
+        console.warn(`[Data Only] Could not fetch balance for account ${account.account_id}:`, e.message);
+      }
+      try {
+        const txResp = await leanFetch(
+          `/data/v2/accounts/${account.account_id}/transactions?entity_id=${user.dataOnlyEntityId}&size=10`,
+          { silent: true },
+        );
+        const txs = txResp.data?.transactions || [];
+        allTransactions.push(...txs.map(t => ({
+          description: t.transaction_information || t.merchant_details?.merchant_name || "Transaction",
+          amount:      t.amount?.amount,
+          currency:    t.amount?.currency,
+          direction:   t.credit_debit_indicator,
+          date:        t.booking_date_time,
+          bankName:    account.nickname || account.account_sub_type || account.account_type || "Account",
+        })));
+      } catch (e) {
+        console.warn(`[Data Only] Could not fetch transactions for account ${account.account_id}:`, e.message);
+      }
+      return {
+        accountId:         account.account_id,
+        bankName:          account.nickname || account.account_sub_type || account.account_type || "Account",
+        accountHolderName: account.account_holder_name || null,
+        iban:              ibanEntry?.identification || null,
+        amount,
+        currency,
+      };
+    }));
+
+    allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    allTransactions = allTransactions.slice(0, 10);
+
+    res.json({ identity, accounts: enriched, transactions: allTransactions });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // AVS ROUTES (Account Verification Solution)
 //
 // Unlike every other feature in this app, AVS has NOTHING to do with the
@@ -2187,9 +2323,21 @@ app.delete("/api/dev/reset", async (req, res) => {
           body: JSON.stringify({ reason: "USER_REQUESTED" }),
         });
         entityDeleted = true;
-        console.log(`[User Reset] Deleted entity ${user.entityId} for customer ${user.customerId}`);
+        console.log(`[User Reset] Deleted Connect & Pay entity ${user.entityId} for customer ${user.customerId}`);
       } catch (err) {
         console.warn(`[User Reset] Could not delete entity on Lean's side:`, err.body || err.message);
+      }
+    }
+    if (user.dataOnlyEntityId) {
+      try {
+        await leanFetch(`/customers/v1/${user.customerId}/entities/${user.dataOnlyEntityId}`, {
+          method: "DELETE",
+          body: JSON.stringify({ reason: "USER_REQUESTED" }),
+        });
+        entityDeleted = true;
+        console.log(`[User Reset] Deleted Data Only entity ${user.dataOnlyEntityId} for customer ${user.customerId}`);
+      } catch (err) {
+        console.warn(`[User Reset] Could not delete Data Only entity on Lean's side:`, err.body || err.message);
       }
     }
 
