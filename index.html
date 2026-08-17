@@ -91,6 +91,24 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .integration-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.06); }
 .integration-card .card-subtitle { margin-bottom:0; }
 
+/* Right-side flow diagram, shown on every integration type's own page —
+   the main content stays left, the diagram sits fixed-width on the right,
+   stacking below on narrow viewports. */
+.flow-diagram-layout { display:grid; grid-template-columns:65fr 35fr; gap:24px; align-items:start; }
+@media (max-width: 1000px) { .flow-diagram-layout { grid-template-columns:1fr; } }
+.flow-diagram-panel { position:sticky; top:20px; }
+.flow-diagram-panel-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.flow-diagram-panel-header .card-eyebrow { margin-bottom:0; }
+.flow-diagram-panel-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.flow-diagram-panel-actions .btn { width:auto; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
+.flow-diagram-svg-wrap { overflow-x:auto; }
+
+/* "View as image" popup — same overlay pattern as the info/success modals,
+   just sized to show a diagram at full, legible size. */
+.diagram-image-modal { background:var(--surface); border-radius:14px; max-width:min(1100px, 95vw); width:100%; max-height:92vh; overflow:hidden; padding:24px; position:relative; box-shadow:0 24px 60px rgba(15,23,42,0.3); display:flex; flex-direction:column; }
+.diagram-image-modal img { display:block; width:auto; height:auto; max-width:100%; max-height:78vh; margin:0 auto; object-fit:contain; }
+.diagram-image-source-note { font-size:11.5px; color:var(--text-3); margin-top:10px; text-align:center; }
+
 /* Connect */
 .connect-area { background:var(--surface-2); border:1.5px dashed var(--border); border-radius:var(--radius); padding:28px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:12px; }
 .connect-icon { width:56px; height:56px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:26px; background:var(--blue-light); border:1px solid rgba(59,130,246,0.15); }
@@ -296,7 +314,8 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 /* Footer / dev */
 footer { text-align:center; padding:16px; font-size:12px; color:var(--text-3); flex-shrink:0; }
 footer a { color:var(--text-3); text-decoration:none; }
-.dev-btn-floating { position:fixed; bottom:24px; right:24px; z-index:100; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:11px 18px; font-size:12px; font-weight:600; font-family:inherit; color:var(--text-3); cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
+.floating-actions-right { position:fixed; bottom:24px; right:24px; z-index:100; display:flex; align-items:center; gap:12px; }
+.dev-btn-floating { background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:11px 18px; font-size:12px; font-weight:600; font-family:inherit; color:var(--text-3); cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
 .dev-btn-floating:hover { border-color:var(--red); color:var(--red); box-shadow:0 6px 18px rgba(15,23,42,0.16); }
 
 .info-banner-trigger { cursor:pointer; transition:border-color 0.15s; }
@@ -309,7 +328,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .info-modal-list { margin:0; padding-left:18px; font-size:13px; color:var(--text-2); line-height:1.65; }
 .info-modal-list li { margin-bottom:6px; }
 .info-modal-list li:last-child { margin-bottom:0; }
-.page-help-btn { position:fixed; bottom:78px; left:24px; z-index:90; width:38px; height:38px; border-radius:50%; background:var(--blue-light); border:1.5px solid var(--blue); color:var(--blue-dark); font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
+.page-help-btn { position:fixed; bottom:24px; left:24px; z-index:90; width:38px; height:38px; border-radius:50%; background:var(--blue-light); border:1.5px solid var(--blue); color:var(--blue-dark); font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
 .page-help-btn:hover { background:var(--blue); color:#fff; box-shadow:0 6px 18px rgba(15,23,42,0.16); }
 
 /* API Activity sidebar — collapsible console of every request/response the
@@ -322,7 +341,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 /* z-index above .phone-overlay (400) — otherwise this button (and the drawer
    below) become unclickable, covered by the phone preview's backdrop, right
    when you'd most want to watch calls made from inside it. */
-.api-log-toggle { position:fixed; bottom:24px; left:24px; z-index:401; width:38px; height:38px; display:flex; align-items:center; justify-content:center; padding:0; background:var(--blue-light); border:1.5px solid var(--blue); border-radius:50%; color:var(--blue-dark); cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
+.api-log-toggle { position:fixed; bottom:24px; left:74px; z-index:401; width:38px; height:38px; display:flex; align-items:center; justify-content:center; padding:0; background:var(--blue-light); border:1.5px solid var(--blue); border-radius:50%; color:var(--blue-dark); cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
 .api-log-toggle:hover { background:var(--blue); color:#fff; box-shadow:0 6px 18px rgba(15,23,42,0.16); }
 .api-log-toggle-icon { font-size:16px; line-height:1; }
 .api-log-badge { position:absolute; top:-4px; right:-4px; background:var(--red); color:#fff; border-radius:999px; padding:1px 5px; font-size:10px; font-weight:700; min-width:16px; line-height:1.4; text-align:center; box-shadow:0 0 0 2px var(--bg); }
@@ -392,10 +411,10 @@ footer a { color:var(--text-3); text-decoration:none; }
    tabs already use, just with the mobile screen's own DOM ids. */
 /* Floating bottom-right, stacked above the User Reset dev button — kept
    out of the header entirely now (that's the whole point of "floating"). */
-.mobile-app-fab { position:fixed; bottom:78px; right:24px; z-index:100; display:flex; align-items:center; gap:6px; background:var(--blue); border:1px solid var(--blue-dark); border-radius:999px; padding:11px 18px; font-size:13px; font-weight:700; font-family:inherit; color:#fff; cursor:pointer; white-space:nowrap; box-shadow:0 4px 14px rgba(37,99,235,0.3); transition:all 0.15s; }
+.mobile-app-fab { display:flex; align-items:center; gap:6px; background:var(--blue); border:1px solid var(--blue-dark); border-radius:999px; padding:11px 18px; font-size:13px; font-weight:700; font-family:inherit; color:#fff; cursor:pointer; white-space:nowrap; box-shadow:0 4px 14px rgba(37,99,235,0.3); transition:all 0.15s; }
 .mobile-app-fab:hover { background:var(--blue-dark); box-shadow:0 6px 18px rgba(37,99,235,0.4); }
 
-.phone-overlay { position:fixed; inset:0; background:#1E293B; display:none; align-items:center; justify-content:center; z-index:400; padding:24px; }
+.phone-overlay { position:fixed; inset:0; background:#1E293B; display:none; align-items:center; justify-content:center; z-index:400; padding:24px; transition:padding-right 0.22s ease; }
 .phone-overlay.open { display:flex; }
 
 .phone-frame { position:relative; width:380px; height:min(800px, 92vh); background:#0B1220; border:1px solid #334155; border-radius:44px; padding:14px; box-shadow:0 30px 80px rgba(0,0,0,0.45); }
@@ -580,7 +599,7 @@ body.phone-widget-active #lean-sdk-iframe {
 
 <div id="integrations-grid">
   <div class="card-title" style="margin-bottom:4px;">Client integration patterns</div>
-  <div class="card-subtitle" style="margin-bottom:18px;">TradeStart's clients don't all connect the same way — pick a pattern below to see how each one actually works.</div>
+  <div class="card-subtitle" style="margin-bottom:18px;">TradeStart's clients don't all connect the same way — pick a pattern below to see how each one actually works. Each one's own page includes its flow diagram.</div>
   <div class="integrations-card-grid">
     <div class="card integration-card" onclick="openIntegrationDemo('CONNECTPAY')">
       <div class="card-eyebrow">Connect &amp; Pay</div>
@@ -614,7 +633,7 @@ body.phone-widget-active #lean-sdk-iframe {
   <button class="btn btn-secondary btn-sm" style="margin-bottom:16px;" onclick="closeIntegrationDemo()">&larr; Back to Integrations</button>
 
   <!-- Connect & Pay -->
-  <div class="two-col integration-demo" id="demo-CONNECTPAY" style="display:none;">
+  <div class="flow-diagram-layout integration-demo" id="demo-CONNECTPAY" style="display:none;">
   <div class="col-stack">
     <div class="card" id="cp-unlinked">
       <div class="card-eyebrow">Connect &amp; Pay</div>
@@ -657,10 +676,21 @@ body.phone-widget-active #lean-sdk-iframe {
       </div>
     </div>
   </div>
+  <div class="card flow-diagram-panel">
+    <div class="flow-diagram-panel-header">
+      <div class="card-eyebrow">Connect &amp; Pay — Flow Breakdown</div>
+      <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('CONNECTPAY')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/creating-a-payment-source" target="_blank" rel="noopener">Docs</a>
+      </div>
+    </div>
+    <div class="flow-diagram-svg-wrap" id="diagram-CONNECTPAY"></div>
+  </div>
   </div>
 
   <!-- Data Only -->
-  <div class="integration-demo" id="demo-DATAONLY" style="display:none;">
+  <div class="flow-diagram-layout integration-demo" id="demo-DATAONLY" style="display:none;">
+  <div class="col-stack">
     <div class="card" id="do-unlinked">
       <div class="card-eyebrow">Data Only</div>
       <div class="card-title">Connect for data — no payment permission</div>
@@ -685,10 +715,22 @@ body.phone-widget-active #lean-sdk-iframe {
       <p class="status-msg" id="status-do"></p>
     </div>
   </div>
+  <div class="card flow-diagram-panel">
+    <div class="flow-diagram-panel-header">
+      <div class="card-eyebrow">Data Only — Flow Breakdown</div>
+      <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('DATAONLY')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/v2.0-UAE/docs/getting-started-with-data" target="_blank" rel="noopener">Docs</a>
+      </div>
+    </div>
+    <div class="flow-diagram-svg-wrap" id="diagram-DATAONLY"></div>
+  </div>
+  </div>
 
   <!-- SIP + AoF Together -->
-  <div class="integration-demo" id="demo-SIPAOF" style="display:none;">
-    <div class="card" style="max-width:560px;" id="sipaof-card">
+  <div class="flow-diagram-layout integration-demo" id="demo-SIPAOF" style="display:none;">
+  <div class="col-stack">
+    <div class="card" id="sipaof-card">
       <div class="card-eyebrow">Open Finance — SIP + AoF</div>
       <div class="card-title">Fund with either rail</div>
       <div class="card-subtitle">A standing AoF consent is offered as the recommended option; SIP stays available as a no-commitment, one-off alternative — same amount, either rail.</div>
@@ -711,13 +753,24 @@ body.phone-widget-active #lean-sdk-iframe {
       <p class="status-msg" id="status-sipaof"></p>
     </div>
   </div>
+  <div class="card flow-diagram-panel">
+    <div class="flow-diagram-panel-header">
+      <div class="card-eyebrow">SIP + AoF Together — Flow Breakdown</div>
+      <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('SIPAOF')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/getting-started-with-account-in-file-payments" target="_blank" rel="noopener">Docs</a>
+      </div>
+    </div>
+    <div class="flow-diagram-svg-wrap" id="diagram-SIPAOF"></div>
+  </div>
+  </div>
 </div>
 </div>
 
 <!-- AOF PAGE -->
 <div class="page" id="page-AOF">
 <button class="page-help-btn" onclick="openInfoModal('AOF')" title="Why deposit here?">?</button>
-<div class="two-col">
+<div class="flow-diagram-layout">
 <div class="col-stack">
   <div class="card" id="aof-unlinked">
     <div class="card-eyebrow">Get started</div>
@@ -750,12 +803,22 @@ body.phone-widget-active #lean-sdk-iframe {
       <p class="status-msg" id="status-aof"></p>
     </div>
   </div>
-</div>
 
-<div class="card">
-  <div class="card-title">Consent management</div>
-  <div class="card-subtitle">Your standing AoF consent — the same one powering deposits here and any Scheduled Payments.</div>
-  <div id="consent-panel-body"><div class="tx-empty">No consent linked yet.</div></div>
+  <div class="card">
+    <div class="card-title">Consent management</div>
+    <div class="card-subtitle">Your standing AoF consent — the same one powering deposits here and any Scheduled Payments.</div>
+    <div id="consent-panel-body"><div class="tx-empty">No consent linked yet.</div></div>
+  </div>
+</div>
+<div class="card flow-diagram-panel">
+  <div class="flow-diagram-panel-header">
+    <div class="card-eyebrow">AoF Only — Flow Breakdown</div>
+    <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('AOF')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/getting-started-with-account-in-file-payments" target="_blank" rel="noopener">Docs</a>
+      </div>
+  </div>
+  <div class="flow-diagram-svg-wrap" id="diagram-AOF"></div>
 </div>
 </div>
 </div>
@@ -763,7 +826,8 @@ body.phone-widget-active #lean-sdk-iframe {
 <!-- SIP PAGE -->
 <div class="page" id="page-SIP">
 <button class="page-help-btn" onclick="openInfoModal('SIP')" title="Why SIP?">?</button>
-  <div class="card" style="max-width:560px;" id="sip-form-card">
+<div class="flow-diagram-layout">
+  <div class="card" id="sip-form-card">
     <div class="card-eyebrow">Open Finance — Single Instant Payment</div>
     <div class="card-title">Pay via SIP</div>
     <div class="card-subtitle">No linking required. Enter an amount and you'll be redirected to authorize this one payment with your bank in real time.</div>
@@ -782,14 +846,26 @@ body.phone-widget-active #lean-sdk-iframe {
     <div class="input-wrap" style="margin-bottom:12px;">
       <input type="text" id="sip-reference" placeholder="e.g. Trading top-up" class="text-field" />
     </div>
-    <button class="btn btn-sky" id="btn-sip-standalone" onclick="handleSipStandaloneCheckout()">Checkout via SIP</button>
+    <button class="btn btn-primary" id="btn-sip-standalone" onclick="handleSipStandaloneCheckout()">Checkout via SIP</button>
     <p class="status-msg" id="status-sip-standalone"></p>
   </div>
+  <div class="card flow-diagram-panel">
+    <div class="flow-diagram-panel-header">
+      <div class="card-eyebrow">SIP Only — Flow Breakdown</div>
+      <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('SIP')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/getting-started-with-single-instant-payments" target="_blank" rel="noopener">Docs</a>
+      </div>
+    </div>
+    <div class="flow-diagram-svg-wrap" id="diagram-SIP"></div>
+  </div>
+</div>
 </div>
 
 <!-- RECON PAGE -->
 <div class="page" id="page-RECON">
 <button class="page-help-btn" onclick="openInfoModal('RECON')" title="Why Recon?">?</button>
+<div class="flow-diagram-layout">
   <div class="card">
     <div class="recon-header">
       <div><div class="recon-title">Recon</div><div class="recon-subtitle">All deposits — RE, SIP &amp; AOF — matched against actual bank deposits</div></div>
@@ -802,12 +878,24 @@ body.phone-widget-active #lean-sdk-iframe {
     </div>
     <div id="recon-body"><div class="recon-empty"><div class="recon-empty-icon">&#128203;</div>Make a deposit first to see reconciliation data</div></div>
   </div>
+  <div class="card flow-diagram-panel">
+    <div class="flow-diagram-panel-header">
+      <div class="card-eyebrow">Reconciliation — Flow Breakdown</div>
+      <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('RECON')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/reconciling-payments" target="_blank" rel="noopener">Docs</a>
+      </div>
+    </div>
+    <div class="flow-diagram-svg-wrap" id="diagram-RECON"></div>
+  </div>
+</div>
 </div>
 
 <!-- PAYOUT PAGE -->
 <div class="page" id="page-PAYOUT">
 <button class="page-help-btn" onclick="openInfoModal('PAYOUT')" title="Why is this balance separate?">?</button>
-<div class="two-col">
+<div class="flow-diagram-layout">
+<div class="col-stack">
   <div class="card">
     <div class="card-eyebrow">Payouts</div>
     <div class="card-title">Withdraw to bank</div>
@@ -853,12 +941,24 @@ body.phone-widget-active #lean-sdk-iframe {
     <div id="payout-list-body"><div class="tx-empty">No payouts yet</div></div>
   </div>
 </div>
+<div class="card flow-diagram-panel">
+  <div class="flow-diagram-panel-header">
+    <div class="card-eyebrow">Payouts — Flow Breakdown</div>
+    <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('PAYOUT')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/getting-started-with-payouts" target="_blank" rel="noopener">Docs</a>
+      </div>
+  </div>
+  <div class="flow-diagram-svg-wrap" id="diagram-PAYOUT"></div>
+</div>
+</div>
 </div>
 
 <!-- REFUND PAGE -->
 <div class="page" id="page-REFUND">
 <button class="page-help-btn" onclick="openInfoModal('REFUND')" title="Why Refunds?">?</button>
-<div class="two-col">
+<div class="flow-diagram-layout">
+<div class="col-stack">
   <div class="card">
     <div class="card-eyebrow">Refunds</div>
     <div class="card-title">Refund a deposit</div>
@@ -912,13 +1012,24 @@ body.phone-widget-active #lean-sdk-iframe {
     <div id="refund-list-body"><div class="tx-empty">No refunds yet</div></div>
   </div>
 </div>
+<div class="card flow-diagram-panel">
+  <div class="flow-diagram-panel-header">
+    <div class="card-eyebrow">Refunds — Flow Breakdown</div>
+    <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('REFUND')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/using-refunds-for-payouts" target="_blank" rel="noopener">Docs</a>
+      </div>
+  </div>
+  <div class="flow-diagram-svg-wrap" id="diagram-REFUND"></div>
+</div>
+</div>
 </div>
 
 <!-- SCHEDULE PAGE -->
 <div class="page" id="page-SCHEDULE">
 <button class="page-help-btn" onclick="openInfoModal('SCHEDULE')" title="Why Scheduled Payments?">?</button>
-<div class="two-col">
-  <div class="col-stack">
+<div class="flow-diagram-layout">
+<div class="col-stack">
     <div class="card">
       <div class="card-eyebrow">Register</div>
       <div class="card-title">New schedule</div>
@@ -975,7 +1086,6 @@ body.phone-widget-active #lean-sdk-iframe {
       </div>
       <p class="status-msg" id="status-schedule"></p>
     </div>
-  </div>
 
   <div class="card">
     <div class="card-eyebrow">Your schedules</div>
@@ -990,12 +1100,24 @@ body.phone-widget-active #lean-sdk-iframe {
     </div>
   </div>
 </div>
+<div class="card flow-diagram-panel">
+  <div class="flow-diagram-panel-header">
+    <div class="card-eyebrow">Scheduled Payments — Flow Breakdown</div>
+    <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('SCHEDULE')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/getting-start-with-scheduled-payments" target="_blank" rel="noopener">Docs</a>
+      </div>
+  </div>
+  <div class="flow-diagram-svg-wrap" id="diagram-SCHEDULE"></div>
+</div>
+</div>
 </div>
 
 <!-- AVS PAGE -->
 <div class="page" id="page-AVS">
 <button class="page-help-btn" onclick="openInfoModal('AVS')" title="Why AVS?">?</button>
-<div class="two-col">
+<div class="flow-diagram-layout">
+<div class="col-stack">
   <div class="card">
     <div class="card-eyebrow">Account Verification</div>
     <div class="card-title">Verify an account</div>
@@ -1031,12 +1153,24 @@ body.phone-widget-active #lean-sdk-iframe {
     <div id="avs-history-body"><div class="tx-empty">No checks yet</div></div>
   </div>
 </div>
+<div class="card flow-diagram-panel">
+  <div class="flow-diagram-panel-header">
+    <div class="card-eyebrow">Account Verification — Flow Breakdown</div>
+    <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('AVS')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/how-to-use-account-verification-service" target="_blank" rel="noopener">Docs</a>
+      </div>
+  </div>
+  <div class="flow-diagram-svg-wrap" id="diagram-AVS"></div>
+</div>
+</div>
 </div>
 
 <!-- PAYMENT LINKS PAGE -->
 <div class="page" id="page-LINKS">
 <button class="page-help-btn" onclick="openInfoModal('LINKS')" title="Why Payment Links?">?</button>
-<div class="two-col">
+<div class="flow-diagram-layout">
+<div class="col-stack">
   <div class="card">
     <div class="card-eyebrow">Hosted checkout</div>
     <div class="card-title">New payment link</div>
@@ -1092,6 +1226,17 @@ body.phone-widget-active #lean-sdk-iframe {
     <div id="link-list-body"><div class="tx-empty">No payment links yet</div></div>
   </div>
 </div>
+<div class="card flow-diagram-panel">
+  <div class="flow-diagram-panel-header">
+    <div class="card-eyebrow">Payment Links — Flow Breakdown</div>
+    <div class="flow-diagram-panel-actions">
+        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('LINKS')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/create-payment-link" target="_blank" rel="noopener">Docs</a>
+      </div>
+  </div>
+  <div class="flow-diagram-svg-wrap" id="diagram-LINKS"></div>
+</div>
+</div>
 </div>
 
 </main>
@@ -1103,8 +1248,10 @@ body.phone-widget-active #lean-sdk-iframe {
   </svg>
   Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security
 </footer>
-<button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
-<button class="dev-btn-floating" onclick="userReset()">&#128295; User Reset</button>
+<div class="floating-actions-right">
+  <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
+  <button class="dev-btn-floating" onclick="userReset()">&#128295; User Reset</button>
+</div>
 
 <!-- GENERIC "WHY THIS PAGE?" INFO WINDOW — content injected per page by openInfoModal() -->
 <div class="info-modal-overlay" id="info-modal-overlay" onclick="if(event.target===this) closeInfoModal()">
@@ -1130,6 +1277,16 @@ body.phone-widget-active #lean-sdk-iframe {
       </div>
       <button class="btn btn-primary" style="max-width:200px;" onclick="closePaymentSuccessModal()">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- FLOW DIAGRAM "VIEW AS IMAGE" POPUP — shared by every page's diagram panel;
+     populated with whichever diagram was clicked (see openDiagramImageModal()). -->
+<div class="info-modal-overlay" id="diagram-image-overlay" onclick="if(event.target===this) closeDiagramImageModal()">
+  <div class="diagram-image-modal" id="diagram-image-content">
+    <button class="info-modal-close" onclick="closeDiagramImageModal()">&times;</button>
+    <div class="card-eyebrow" id="diagram-image-title">Flow diagram</div>
+    <div id="diagram-image-svg"></div>
   </div>
 </div>
 
@@ -1198,11 +1355,11 @@ body.phone-widget-active #lean-sdk-iframe {
               <input type="number" id="mobile-deposit-amount" placeholder="0.00" min="1" step="any" />
             </div>
 
-            <div class="m-section-label">Payment method</div>
+            <div class="m-section-label">Pay by Bank</div>
             <div class="m-method-card recommended" id="mobile-of-card" onclick="mobileHandleOfPrimary()" role="button" tabindex="0">
               <div class="m-method-icon">&#127974;</div>
               <div class="m-method-info">
-                <div class="m-method-name">Pay by Bank</div>
+                <div class="m-method-name">Account on File</div>
                 <div class="m-recommended-tag">Recommended</div>
                 <div class="m-method-sub">Free service charges</div>
               </div>
@@ -1434,6 +1591,20 @@ function toggleApiLog() {
   // per the ask: only stay custom-sized for the duration you keep it open.
   if (!apiLogOpen) drawer.style.width = "";
   persistApiLogOpenPref();
+  syncPhoneOverlayShift();
+}
+
+// Keeps the Mobile App preview (a full-screen centered overlay) from sitting
+// underneath the API Activity drawer — shifts it left by the drawer's
+// current width (0 when closed) instead of leaving it centered behind the
+// drawer's right edge. Re-synced on open/close, drag-resize and fullscreen
+// toggle so it tracks the drawer's actual width at all times.
+function syncPhoneOverlayShift() {
+  const overlay = document.querySelector(".phone-overlay");
+  if (!overlay) return;
+  const drawer = document.getElementById("api-log-drawer");
+  const width = apiLogOpen && drawer ? drawer.getBoundingClientRect().width : 0;
+  overlay.style.paddingRight = width ? `${width}px` : "";
 }
 
 // Drag-to-resize from the drawer's left edge. No stored/remembered width —
@@ -1460,6 +1631,7 @@ function initApiLogResize() {
     const dragged = startX - e.clientX; // dragging left (toward page) grows it
     const newWidth = Math.min(Math.max(startWidth + dragged, 320), window.innerWidth - 40);
     drawer.style.width = `${newWidth}px`;
+    syncPhoneOverlayShift();
   });
 
   document.addEventListener("mouseup", () => {
@@ -1493,6 +1665,7 @@ function toggleApiLogFullscreen() {
   apiLogFullscreen = !apiLogFullscreen;
   document.getElementById("api-log-drawer").classList.toggle("fullscreen", apiLogFullscreen);
   document.getElementById("api-log-fullscreen-btn").textContent = apiLogFullscreen ? "Exit full screen" : "Full screen";
+  syncPhoneOverlayShift();
 }
 
 function setApiLogFilter(filter) {
@@ -1873,13 +2046,14 @@ function switchPage(page) {
   currentPage = page;
 
   if (page === "INTEGRATIONS") closeIntegrationDemo();
-  if (page === "AOF")      renderAofTab();
-  if (page === "RECON")    loadReconciliation();
-  if (page === "PAYOUT")   renderPayoutTab();
-  if (page === "REFUND")   renderRefundTab();
-  if (page === "SCHEDULE") loadSchedules();
-  if (page === "AVS")      loadAvsHistory();
-  if (page === "LINKS")    loadPaymentLinks();
+  if (page === "AOF")      { renderAofTab(); renderFlowDiagram("AOF"); }
+  if (page === "SIP")      renderFlowDiagram("SIP");
+  if (page === "RECON")    { loadReconciliation(); renderFlowDiagram("RECON"); }
+  if (page === "PAYOUT")   { renderPayoutTab(); renderFlowDiagram("PAYOUT"); }
+  if (page === "REFUND")   { renderRefundTab(); renderFlowDiagram("REFUND"); }
+  if (page === "SCHEDULE") { loadSchedules(); renderFlowDiagram("SCHEDULE"); }
+  if (page === "AVS")      { loadAvsHistory(); renderFlowDiagram("AVS"); }
+  if (page === "LINKS")    { loadPaymentLinks(); renderFlowDiagram("LINKS"); }
 }
 
 // ─── INIT ───────────────────────────────────────────────────────────────────
@@ -2504,14 +2678,15 @@ async function loadDataOnlyAccounts() {
     } else {
       const rows = transactions.map(t => `
         <tr>
-          <td>${fmtDate(t.date)}</td>
-          <td>${t.description}</td>
-          <td>${t.bankName}</td>
-          <td style="text-align:right; font-weight:700; color:${t.direction === "CREDIT" ? "var(--emerald)" : "var(--text)"};">${t.direction === "CREDIT" ? "+" : "-"}${t.currency || "AED"} ${fmt(t.amount || 0)}</td>
+          <td style="white-space:nowrap;">${fmtDate(t.date)}</td>
+          <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.description}">${t.description}</td>
+          <td style="white-space:nowrap;">${t.bankName}</td>
+          <td style="text-align:right; font-weight:700; white-space:nowrap; color:${t.direction === "CREDIT" ? "var(--emerald)" : "var(--text)"};">${t.direction === "CREDIT" ? "+" : "-"}${t.currency || "AED"} ${fmt(t.amount || 0)}</td>
         </tr>
       `).join("");
       txEl.innerHTML = `
-        <table class="recon-table">
+        <table class="recon-table" style="table-layout:fixed; width:100%;">
+          <colgroup><col style="width:105px;"><col><col style="width:110px;"><col style="width:130px;"></colgroup>
           <thead><tr><th>Date</th><th>Description</th><th>Account</th><th style="text-align:right;">Amount</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -2620,6 +2795,7 @@ function desktopManageConsents() {
   callLeanSdk("Lean.manageConsents() — desktop consent management", Lean.manageConsents.bind(Lean), {
     app_token:    APP_TOKEN,
     customer_id:  customerId,
+    consent_id:   consentId,
     access_token: accessToken,
     sandbox:      true,
 
@@ -3186,17 +3362,411 @@ function openIntegrationDemo(demo) {
   document.getElementById("integrations-grid").style.display = "none";
   document.getElementById("integrations-detail").style.display = "block";
   ["CONNECTPAY", "DATAONLY", "SIPAOF"].forEach(d => {
-    document.getElementById("demo-" + d).style.display = d === demo ? (d === "CONNECTPAY" ? "grid" : "block") : "none";
+    document.getElementById("demo-" + d).style.display = d === demo ? "grid" : "none";
   });
 
   if (demo === "CONNECTPAY") renderConnectPayCard();
   if (demo === "DATAONLY")   renderDataOnlyCard();
   if (demo === "SIPAOF")     renderSipAofCard();
+  renderFlowDiagram(demo);
 }
 
 function closeIntegrationDemo() {
   document.getElementById("integrations-grid").style.display = "block";
   document.getElementById("integrations-detail").style.display = "none";
+}
+
+// ─── INTEGRATION PAGES — right-side flow diagrams ──────────────────────────
+// Each integration type's own page shows its flow diagram on the right (see
+// .flow-diagram-layout). A full side-by-side lifeline diagram (like Lean's
+// standard flow-diagram style) doesn't fit a ~380px side column legibly, so
+// this renders the same step data as a compact vertical timeline instead:
+// one lane, numbered nodes, an "A → B" actor tag per step, wrapped text.
+// Built as plain SVG, generated once per flow then cached.
+const DIAGRAM_ACTORS_SHORT = ["Customer", "Your app", "Lean LinkSDK", "Your backend", "Lean API"];
+
+function wrapPlainText(text, maxCharsPerLine) {
+  const words = text.split(" ");
+  const lines = [];
+  let current = "";
+  words.forEach((w) => {
+    if ((current + " " + w).trim().length > maxCharsPerLine && current) {
+      lines.push(current.trim());
+      current = w;
+    } else {
+      current = (current + " " + w).trim();
+    }
+  });
+  if (current) lines.push(current);
+  return lines;
+}
+
+function escapeSvgText(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function renderCompactFlowSvg(steps) {
+  const W = 460;
+  const laneX = 20;
+  const textX = laneX + 28;
+  const lineH = 16;
+  const bannerCharsPerLine = 52;
+  const labelCharsPerLine = 46;
+
+  let y = 16;
+  let body = "";
+  let stepNum = 0;
+  const nodeYs = [];
+
+  steps.forEach((step) => {
+    if (step.type === "banner") {
+      const lines = wrapPlainText(step.text, bannerCharsPerLine);
+      const h = 14 + lines.length * lineH;
+      body += `<rect x="0" y="${y}" width="${W}" height="${h}" rx="6" fill="#FEF6DC" stroke="#F0DFA0" />`;
+      lines.forEach((line, i) => {
+        body += `<text x="${W / 2}" y="${y + 17 + i * lineH}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7C5E10">${escapeSvgText(line)}</text>`;
+      });
+      y += h + 8;
+    } else {
+      stepNum++;
+      nodeYs.push(y + 11);
+      const dir = step.type === "return" ? "←" : "→";
+      const tag = `${DIAGRAM_ACTORS_SHORT[step.from]} ${dir} ${DIAGRAM_ACTORS_SHORT[step.to]}`;
+      const lines = wrapPlainText(step.label, labelCharsPerLine);
+      body += `<circle cx="${laneX}" cy="${y + 11}" r="11" fill="#1F2937" />`;
+      body += `<text x="${laneX}" y="${y + 15.5}" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">${stepNum}</text>`;
+      body += `<text x="${textX}" y="${y + 6}" font-size="12" font-weight="700" fill="${step.type === "return" ? "#7C3AED" : "#1D4ED8"}">${escapeSvgText(tag)}</text>`;
+      lines.forEach((line, i) => {
+        body += `<text x="${textX}" y="${y + 26 + i * lineH}" font-size="13" fill="#374151">${escapeSvgText(line)}</text>`;
+      });
+      y += 24 + lines.length * lineH + 8;
+    }
+  });
+
+  const lane = nodeYs.length > 1
+    ? `<line x1="${laneX}" y1="${nodeYs[0]}" x2="${laneX}" y2="${nodeYs[nodeYs.length - 1]}" stroke="#D1D5DB" stroke-width="2.5" />`
+    : "";
+
+  return `
+    <svg viewBox="0 0 ${W} ${y + 10}" xmlns="http://www.w3.org/2000/svg" style="width:100%; height:auto; display:block;">
+      ${lane}
+      ${body}
+    </svg>
+  `;
+}
+
+// Wide, side-by-side lifeline version — matches the actual style Lean's own
+// docs use (actor columns, boxes top/bottom, numbered solid calls, dashed
+// returns, full-width phase banners). Used for the "Open" popup's fallback
+// when a page's docs don't have a real diagram image to show instead — the
+// popup has plenty of width for this, unlike the narrow side panel, which is
+// why that one uses the compact vertical version above instead.
+const WIDE_DIAGRAM_ACTORS = ["Customer", "Your app (frontend)", "Lean LinkSDK", "Your backend", "Lean API"];
+
+function renderWideFlowSvg(steps) {
+  const W = 1000;
+  const X = [90, 295, 500, 705, 910];
+  const rowH = 60;
+  const topPad = 70;
+  const bottomPad = 70;
+
+  const height = topPad + steps.length * rowH + bottomPad;
+  let y = topPad;
+  let body = "";
+  let stepNum = 0;
+
+  steps.forEach((step) => {
+    if (step.type === "banner") {
+      body += `
+        <rect x="14" y="${y - 24}" width="${W - 28}" height="32" rx="5" fill="#FEF6DC" stroke="#F0DFA0" />
+        <text x="${W / 2}" y="${y - 3}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7C5E10">${escapeSvgText(step.text)}</text>
+      `;
+    } else {
+      stepNum++;
+      const x1 = X[step.from];
+      const x2 = X[step.to];
+      const midX = (x1 + x2) / 2;
+      const marker = step.type === "return" ? "wide-arrow-dash" : "wide-arrow-solid";
+      body += `
+        <text x="${midX}" y="${y - 12}" text-anchor="middle" font-size="11" fill="#374151">${escapeSvgText(step.label)}</text>
+        <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#1F2937" stroke-width="1.3"
+              ${step.type === "return" ? 'stroke-dasharray="5,4"' : ""} marker-end="url(#${marker})" />
+        <circle cx="${x1}" cy="${y}" r="8.5" fill="#1F2937" />
+        <text x="${x1}" y="${y + 3}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff">${stepNum}</text>
+      `;
+    }
+    y += rowH;
+  });
+
+  const lifelines = X.map((x) => `
+    <line x1="${x}" y1="${topPad - 30}" x2="${x}" y2="${height - topPad + 30}"
+          stroke="#D1D5DB" stroke-width="1.2" stroke-dasharray="3,3" />
+  `).join("");
+
+  const actorBoxes = X.map((x, i) => `
+    <rect x="${x - 74}" y="12" width="148" height="36" rx="6" fill="#EDE9FE" stroke="#C4B5FD" />
+    <text x="${x}" y="34.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#4C1D95">${WIDE_DIAGRAM_ACTORS[i]}</text>
+    <rect x="${x - 74}" y="${height - 48}" width="148" height="36" rx="6" fill="#EDE9FE" stroke="#C4B5FD" />
+    <text x="${x}" y="${height - 25.5}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#4C1D95">${WIDE_DIAGRAM_ACTORS[i]}</text>
+  `).join("");
+
+  return `
+    <svg viewBox="0 0 ${W} ${height}" xmlns="http://www.w3.org/2000/svg" style="display:block; margin:0 auto; width:auto; height:auto; max-width:100%; max-height:78vh;">
+      <defs>
+        <marker id="wide-arrow-solid" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1F2937" /></marker>
+        <marker id="wide-arrow-dash" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1F2937" /></marker>
+      </defs>
+      ${lifelines}
+      ${body}
+      ${actorBoxes}
+    </svg>
+  `;
+}
+
+// Actor indices: 0 Customer · 1 Your app (frontend) · 2 Lean LinkSDK · 3 Your backend · 4 Lean API
+const INTEGRATION_DIAGRAMS = {
+  CONNECTPAY: {
+    title: "Connect & Pay — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Link the bank + grant payment permission in one Lean.connect() call" },
+      { type: "call",   from: 1, to: 2, label: "connect({ permissions: [...data scopes, payments] })" },
+      { type: "return", from: 2, to: 0, label: "Show bank selection" },
+      { type: "banner", text: "Customer logs in to their bank inside the widget" },
+      { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
+      { type: "banner", text: "2) Lean confirms the new entity + payment source" },
+      { type: "return", from: 4, to: 3, label: "Webhook: entity.created" },
+      { type: "banner", text: "3) Create a payment intent for the deposit" },
+      { type: "call",   from: 3, to: 4, label: "POST /payments/v1/intents" },
+      { type: "return", from: 4, to: 3, label: "201 Created (payment_intent_id)" },
+      { type: "return", from: 3, to: 1, label: "Return payment_intent_id" },
+      { type: "banner", text: "4) Launch LinkSDK to authorise the payment" },
+      { type: "call",   from: 1, to: 2, label: "pay(payment_intent_id)" },
+      { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
+      { type: "banner", text: "5) Receive real-time payment status updates" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.created" },
+    ],
+  },
+  DATAONLY: {
+    title: "Data Only — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Connect for data only — no \"payments\" permission requested" },
+      { type: "call",   from: 1, to: 2, label: "connect({ permissions: identity, accounts, balance, transactions })" },
+      { type: "return", from: 2, to: 0, label: "Show bank selection" },
+      { type: "banner", text: "Customer logs in to their bank inside the widget" },
+      { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
+      { type: "banner", text: "2) Lean confirms the new (data-only) entity" },
+      { type: "return", from: 4, to: 3, label: "Webhook: entity.created" },
+      { type: "banner", text: "3) Read the connected accounts + balances" },
+      { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts + /balances" },
+      { type: "return", from: 4, to: 3, label: "200 OK (accounts[], balances[])" },
+      { type: "banner", text: "4) Read identity + recent transactions" },
+      { type: "call",   from: 3, to: 4, label: "GET /data/v2/identity + /transactions" },
+      { type: "return", from: 4, to: 3, label: "200 OK (identity, transactions[])" },
+      { type: "return", from: 3, to: 1, label: "Return accounts, identity, transactions" },
+    ],
+  },
+  AOF: {
+    title: "AoF Only — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Create an Account-on-File consent" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/of/create-consent" },
+      { type: "call",   from: 3, to: 4, label: "POST /consents/v1" },
+      { type: "return", from: 4, to: 3, label: "201 Created (consent_id)" },
+      { type: "return", from: 3, to: 1, label: "Return consent_id" },
+      { type: "banner", text: "2) Launch LinkSDK to authorise the consent" },
+      { type: "call",   from: 1, to: 2, label: "authorizeConsent(consent_id)" },
+      { type: "return", from: 2, to: 0, label: "Redirect to the bank's own portal" },
+      { type: "banner", text: "Customer authorises the standing consent at their bank" },
+      { type: "banner", text: "3) Capture the redirect back to your app" },
+      { type: "call",   from: 1, to: 2, label: "captureRedirect()" },
+      { type: "return", from: 2, to: 1, label: "Authorisation result (success / failure)" },
+      { type: "banner", text: "4) Lean confirms the consent is authorised" },
+      { type: "return", from: 4, to: 3, label: "Webhook: consent.status.updated (AUTHORISED)" },
+      { type: "banner", text: "5) Deposit any time — no SDK, no re-authorisation" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/of/pay" },
+      { type: "call",   from: 3, to: 4, label: "POST /payments/v1/account-on-file" },
+      { type: "return", from: 4, to: 3, label: "200 OK + Webhook: payment.updated" },
+    ],
+  },
+  SIP: {
+    title: "Single Instant Payment — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Create a payment intent" },
+      { type: "call",   from: 3, to: 4, label: "POST /payments/v1/intents" },
+      { type: "return", from: 4, to: 3, label: "201 Created (payment_intent_id)" },
+      { type: "return", from: 3, to: 1, label: "Return payment_intent_id" },
+      { type: "banner", text: "2) Launch LinkSDK to review and authorise the payment" },
+      { type: "call",   from: 1, to: 2, label: "checkout(payment_intent_id)" },
+      { type: "return", from: 2, to: 0, label: "Show payment details + bank selection" },
+      { type: "banner", text: "Customer is redirected to their bank to authorise" },
+      { type: "banner", text: "3) Capture the redirect back to your app" },
+      { type: "call",   from: 1, to: 2, label: "captureRedirect()" },
+      { type: "return", from: 2, to: 1, label: "Authorisation result (success / failure)" },
+      { type: "return", from: 1, to: 0, label: "Show confirmation / error screen" },
+      { type: "banner", text: "4) Receive real-time payment status updates" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.created" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.updated" },
+    ],
+  },
+  SIPAOF: {
+    title: "SIP + AoF Together — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Offer both funding rails from one amount" },
+      { type: "banner", text: "Path A — customer picks \"Link & pay via AoF\" (recommended)" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/of/create-consent" },
+      { type: "call",   from: 1, to: 2, label: "authorizeConsent(consent_id)" },
+      { type: "return", from: 2, to: 0, label: "Redirect to the bank's own portal" },
+      { type: "return", from: 4, to: 3, label: "Webhook: consent.status.updated (AUTHORISED)" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/of/pay — same amount, auto-triggered" },
+      { type: "banner", text: "Path B — customer picks \"Pay via SIP\" (one-off)" },
+      { type: "call",   from: 3, to: 4, label: "POST /payments/v1/intents" },
+      { type: "call",   from: 1, to: 2, label: "checkout(payment_intent_id)" },
+      { type: "return", from: 2, to: 0, label: "Redirect to the bank to authorise this one payment" },
+      { type: "banner", text: "Either path ends the same way" },
+      { type: "return", from: 4, to: 3, label: "Webhook confirms the payment — trading balance updated" },
+    ],
+  },
+  RECON: {
+    title: "Reconciliation — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Every deposit (RE/CP, SIP, AoF) is already recorded locally" },
+      { type: "call",   from: 1, to: 3, label: "GET /api/reconciliation" },
+      { type: "banner", text: "2) Check each payment against Lean's own ground truth" },
+      { type: "call",   from: 3, to: 4, label: "GET /reconciliation/v1/payments/{payment_id}" },
+      { type: "return", from: 4, to: 3, label: "200 OK (Reconciled / Outstanding / Unreceived)" },
+      { type: "return", from: 3, to: 1, label: "Return reconciliation status per payment" },
+      { type: "banner", text: "3) Ground truth always comes from Lean's platform, never the in-app success toast alone" },
+    ],
+  },
+  PAYOUT: {
+    title: "Payouts — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Send money FROM the platform TO a bank account" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/payout" },
+      { type: "call",   from: 3, to: 4, label: "POST /payouts/v1/payment" },
+      { type: "return", from: 4, to: 3, label: "201 Created (payout id, status: PENDING)" },
+      { type: "banner", text: "2) Requires manual authorisation in the Lean Dashboard" },
+      { type: "banner", text: "Ops team reviews and authorises the payout in Lean's dashboard" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.updated (ACCEPTED_BY_BANK)" },
+      { type: "return", from: 3, to: 1, label: "Payout balance updated" },
+    ],
+  },
+  REFUND: {
+    title: "Refunds — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Reverse a completed deposit — Lean looks up the payer, no IBAN entry" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/refunds" },
+      { type: "call",   from: 3, to: 4, label: "POST /payouts/refunds" },
+      { type: "return", from: 4, to: 3, label: "201 Created (status: CREATED)" },
+      { type: "banner", text: "2) Maker-checker by design — nothing moves until approved" },
+      { type: "call",   from: 1, to: 3, label: "PUT /api/refunds/{refund_id} (status: APPROVED)" },
+      { type: "call",   from: 3, to: 4, label: "PUT /payouts/refunds" },
+      { type: "return", from: 4, to: 3, label: "200 OK (status: APPROVED)" },
+      { type: "banner", text: "3) Funds only move once a checker approves it" },
+      { type: "return", from: 4, to: 3, label: "Webhook confirms the refund — trading balance adjusted" },
+    ],
+  },
+  SCHEDULE: {
+    title: "Scheduled Payments — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Uses the SAME standing AoF consent as regular deposits" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/schedules" },
+      { type: "call",   from: 3, to: 4, label: "POST /schedules/v1" },
+      { type: "return", from: 4, to: 3, label: "201 Created (schedule_id)" },
+      { type: "return", from: 3, to: 1, label: "Return schedule_id" },
+      { type: "banner", text: "2) Lean executes each payment automatically, on schedule" },
+      { type: "banner", text: "No SDK, no re-authorisation — the standing consent covers every run" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.created (per scheduled run)" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.updated (per scheduled run)" },
+    ],
+  },
+  AVS: {
+    title: "Account Verification — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) A single, synchronous backend call — no SDK, no redirect" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/avs/verify" },
+      { type: "call",   from: 3, to: 4, label: "POST /verifications/v1/accounts" },
+      { type: "return", from: 4, to: 3, label: "200 OK (account_ownership_verified / match score)" },
+      { type: "return", from: 3, to: 1, label: "Return the verification result" },
+      { type: "banner", text: "2) Answered in the same request — no webhook, no waiting" },
+    ],
+  },
+  LINKS: {
+    title: "Payment Links — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Create a hosted checkout page — no in-app UI needed" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/payment-links" },
+      { type: "call",   from: 3, to: 4, label: "POST /payment-links/v1" },
+      { type: "return", from: 4, to: 3, label: "201 Created (link_id, url)" },
+      { type: "return", from: 3, to: 1, label: "Return the shareable link URL" },
+      { type: "banner", text: "2) Share the link — the payer authorises on Lean's own hosted page" },
+      { type: "banner", text: "Payer opens the link and authorises the payment on Lean's page" },
+      { type: "banner", text: "3) Track usage back in your app" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.created (per usage)" },
+      { type: "call",   from: 3, to: 4, label: "GET /payment-links/v1/{link_id}/usages" },
+      { type: "return", from: 4, to: 3, label: "200 OK (usages[])" },
+    ],
+  },
+};
+
+// Renders (once, then cached) the given flow's diagram into its page's own
+// #diagram-XXX container — called whenever that integration's page opens.
+function renderFlowDiagram(demo) {
+  const cfg = INTEGRATION_DIAGRAMS[demo];
+  const el = document.getElementById("diagram-" + demo);
+  if (!cfg || !el) return;
+  if (!cfg._svg) cfg._svg = renderCompactFlowSvg(cfg.steps);
+  if (!el.innerHTML) el.innerHTML = cfg._svg;
+}
+
+// Same URLs as each page's own "Docs" button (see the <a> tags in the
+// markup) — kept here too so the image modal can link back to the source.
+const DOCS_URLS = {
+  CONNECTPAY: "https://docs.leantech.me/docs/creating-a-payment-source",
+  DATAONLY:   "https://docs.leantech.me/v2.0-UAE/docs/getting-started-with-data",
+  AOF:        "https://docs.leantech.me/docs/getting-started-with-account-in-file-payments",
+  SIPAOF:     "https://docs.leantech.me/docs/getting-started-with-account-in-file-payments",
+  SIP:        "https://docs.leantech.me/docs/getting-started-with-single-instant-payments",
+  RECON:      "https://docs.leantech.me/docs/reconciling-payments",
+  PAYOUT:     "https://docs.leantech.me/docs/getting-started-with-payouts",
+  REFUND:     "https://docs.leantech.me/docs/using-refunds-for-payouts",
+  SCHEDULE:   "https://docs.leantech.me/docs/getting-start-with-scheduled-payments",
+  AVS:        "https://docs.leantech.me/docs/how-to-use-account-verification-service",
+  LINKS:      "https://docs.leantech.me/docs/create-payment-link",
+};
+
+// Real flow-diagram screenshots pulled straight from Lean's own docs pages —
+// verified to exist on each page before adding here. Not every product's
+// docs page has one (some only have UI screenshots, or a live-rendered
+// Mermaid diagram with no static image) — those fall back to our own
+// generated breakdown below instead of showing something wrong.
+const DOCS_DIAGRAM_IMAGE = {
+  REFUND: "https://files.readme.io/d88b129e09f1b8f96e0b2e51dd3589971c6793589e675f796f07f0faafb48559-image.png",
+  DATAONLY: "https://files.readme.io/a5f32ea7fb690b877eab3839b410c9b336e30a876579d2af3c81c22845b7386d-image.png",
+};
+
+// "Open" — shows the flow diagram bigger, in a modal, for whichever page's
+// button was clicked. Prefers the real image from Lean's own docs page;
+// falls back to our own generated breakdown when that page doesn't have one.
+function openDiagramImageModal(demo) {
+  const cfg = INTEGRATION_DIAGRAMS[demo];
+  if (!cfg) return;
+  document.getElementById("diagram-image-title").textContent = cfg.title;
+  const body = document.getElementById("diagram-image-svg");
+  const docsImage = DOCS_DIAGRAM_IMAGE[demo];
+  if (docsImage) {
+    body.innerHTML = `<img src="${docsImage}" alt="${cfg.title}" />
+      <div class="diagram-image-source-note">From Lean's documentation — <a href="${DOCS_URLS[demo]}" target="_blank" rel="noopener">open the full page</a></div>`;
+  } else {
+    if (!cfg._wideSvg) cfg._wideSvg = renderWideFlowSvg(cfg.steps);
+    body.innerHTML = `${cfg._wideSvg}
+      <div class="diagram-image-source-note">Lean's docs don't have a diagram for this one — built to match their style, from the same flow shown on the page.</div>`;
+  }
+  document.getElementById("diagram-image-overlay").classList.add("open");
+}
+
+function closeDiagramImageModal() {
+  document.getElementById("diagram-image-overlay").classList.remove("open");
 }
 
 const DEPOSIT_TABS = {
@@ -4561,6 +5131,8 @@ function openMobileApp() {
   applyMobileSdkScope();
   window.addEventListener("resize", applyMobileSdkScope);
   switchMobileTab(mobileCurrentTab);
+  // In case the API log drawer is already open/pinned when the phone opens.
+  syncPhoneOverlayShift();
 }
 
 function closeMobileApp() {
@@ -4882,7 +5454,7 @@ function mobileDepositSuccess(amount) {
 function mobileConnectSuccess() {
   document.getElementById("mobile-deposit-success-title").textContent = "Bank connected";
   document.getElementById("mobile-deposit-success-amount").style.display = "none";
-  document.getElementById("mobile-deposit-success-note").textContent = "Open Finance is connected — tap Pay by Bank to fund instantly.";
+  document.getElementById("mobile-deposit-success-note").textContent = "Open Finance is connected — tap Account on File to fund instantly.";
   document.getElementById("mobile-deposit-form").style.display = "none";
   document.getElementById("mobile-deposit-success").style.display = "flex";
 }
@@ -4987,6 +5559,7 @@ function mobileManageConsents() {
   callLeanSdk("Lean.manageConsents() — mobile consent management", Lean.manageConsents.bind(Lean), {
     app_token:    APP_TOKEN,
     customer_id:  customerId,
+    consent_id:   consentId,
     access_token: accessToken,
     sandbox:      true,
 
