@@ -1253,7 +1253,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.1
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.2
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -3679,7 +3679,8 @@ const INTEGRATION_DIAGRAMS = {
   PAYOUT: {
     title: "Payouts — Flow Breakdown",
     steps: [
-      { type: "banner", text: "1) Send money FROM the platform TO a bank account" },
+      { type: "banner", text: "1) Customer initiates a withdrawal — sends money FROM the platform TO a bank account" },
+      { type: "call",   from: 0, to: 1, label: "Requests a withdrawal (amount + reference)" },
       { type: "call",   from: 1, to: 3, label: "POST /api/payout" },
       { type: "call",   from: 3, to: 4, label: "POST /payouts/v1/payment" },
       { type: "return", from: 4, to: 3, label: "201 Created (payout id, status: PENDING)" },
@@ -3695,13 +3696,14 @@ const INTEGRATION_DIAGRAMS = {
       { type: "banner", text: "1) Reverse a completed deposit — Lean looks up the payer, no IBAN entry" },
       { type: "call",   from: 1, to: 3, label: "POST /api/refunds" },
       { type: "call",   from: 3, to: 4, label: "POST /payouts/refunds" },
-      { type: "return", from: 4, to: 3, label: "201 Created (status: CREATED)" },
+      { type: "return", from: 4, to: 3, label: "201 Created — status: CREATED" },
       { type: "banner", text: "2) Maker-checker by design — nothing moves until approved" },
       { type: "call",   from: 1, to: 3, label: "PUT /api/refunds/{refund_id} (status: APPROVED)" },
       { type: "call",   from: 3, to: 4, label: "PUT /payouts/refunds" },
-      { type: "return", from: 4, to: 3, label: "200 OK (status: APPROVED)" },
-      { type: "banner", text: "3) Funds only move once a checker approves it" },
-      { type: "return", from: 4, to: 3, label: "Webhook confirms the refund — trading balance adjusted" },
+      { type: "return", from: 4, to: 3, label: "200 OK — status: PROCESSING" },
+      { type: "banner", text: "3) Lean processes the refund at the bank" },
+      { type: "return", from: 4, to: 3, label: "Webhook: transaction.account (status: PROCESSED or FAILED)" },
+      { type: "return", from: 3, to: 1, label: "PROCESSED → credited to customer · FAILED → check failure_details" },
     ],
   },
   SCHEDULE: {
@@ -3779,7 +3781,6 @@ const DOCS_URLS = {
 // Mermaid diagram with no static image) — those fall back to our own
 // generated breakdown below instead of showing something wrong.
 const DOCS_DIAGRAM_IMAGE = {
-  REFUND: "https://files.readme.io/d88b129e09f1b8f96e0b2e51dd3589971c6793589e675f796f07f0faafb48559-image.png",
   DATAONLY: "https://files.readme.io/a5f32ea7fb690b877eab3839b410c9b336e30a876579d2af3c81c22845b7386d-image.png",
 };
 
