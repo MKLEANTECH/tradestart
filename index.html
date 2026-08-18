@@ -207,7 +207,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
    ("rounded pill containers" is the explicit spec for its Badges system),
    and that pill language carries through everywhere else too, so buttons
    follow the same shape rather than the old 8px rounded-rect. */
-.btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; border-radius:999px; font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; border:none; }
+.btn { -webkit-appearance:none; appearance:none; box-sizing:border-box; line-height:1.2; display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; border-radius:999px; font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; border:none; }
 .btn:disabled { opacity:0.45; cursor:not-allowed; }
 .btn-primary  { background:var(--blue);   color:#fff; }
 .btn-primary:hover:not(:disabled)  { background:var(--blue-dark); }
@@ -224,6 +224,10 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .btn-ghost    { background:transparent; color:var(--text-3); border:none; }
 .btn-ghost:hover:not(:disabled)    { color:var(--text-2); }
 .btn-sm { width:auto; padding:8px 16px; font-size:12px; flex-shrink:0; }
+.btn-two-line { flex-direction:row; gap:8px; padding:14px; white-space:nowrap; }
+.btn-two-line .btn-main-label { font-size:15px; font-weight:600; }
+.btn-two-line .btn-sub-label { font-size:12px; font-weight:500; opacity:0.85; }
+.btn-two-line .btn-sub-label::before { content:"\00a0\2014\00a0"; opacity:0.7; }
 
 /* Method picker (RE / SIP / AOF choice on deposit) */
 .method-pills { display:flex; gap:8px; margin-bottom:6px; }
@@ -417,12 +421,14 @@ footer a { color:var(--text-3); text-decoration:none; }
 .phone-overlay { position:fixed; inset:0; background:#1E293B; display:none; align-items:center; justify-content:center; z-index:400; padding:24px; transition:padding-right 0.22s ease; }
 .phone-overlay.open { display:flex; }
 
-.phone-frame { position:relative; width:380px; height:min(800px, 92vh); background:#0B1220; border:1px solid #334155; border-radius:44px; padding:14px; box-shadow:0 30px 80px rgba(0,0,0,0.45); }
+.phone-frame { position:relative; width:380px; height:min(800px, 92vh); background:#0B1220; border:1px solid #334155; border-radius:56px; padding:14px; box-shadow:0 30px 80px rgba(0,0,0,0.45); }
 .phone-close { position:absolute; top:-14px; right:-14px; width:34px; height:34px; border-radius:50%; background:var(--surface); border:1px solid var(--border); color:var(--text-2); font-size:18px; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,0.2); z-index:1; }
 .phone-close:hover { color:var(--text); }
 
-.phone-screen { position:relative; height:100%; background:var(--bg); border-radius:32px; overflow:hidden; display:flex; flex-direction:column; }
-.phone-statusbar { flex-shrink:0; height:30px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; font-size:12px; font-weight:600; color:var(--text); background:var(--surface); }
+.phone-screen { position:relative; height:100%; background:var(--bg); border-radius:44px; overflow:hidden; display:flex; flex-direction:column; }
+.phone-statusbar { position:relative; flex-shrink:0; height:47px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 24px 8px; font-size:15px; font-weight:600; letter-spacing:-0.2px; color:var(--text); background:var(--surface); }
+.phone-statusbar-icons { display:flex; align-items:center; gap:5px; color:var(--text); }
+.dynamic-island { position:absolute; top:11px; left:50%; transform:translateX(-50%); width:100px; height:28px; background:#000; border-radius:16px; z-index:2; }
 .phone-app-header { flex-shrink:0; padding:14px 20px 12px; background:var(--surface); border-bottom:1px solid var(--border); }
 .phone-app-title { font-size:19px; font-weight:700; color:var(--text); letter-spacing:-0.3px; }
 
@@ -745,11 +751,12 @@ body.phone-widget-active #lean-sdk-iframe {
         <input type="number" id="sipaof-amount" placeholder="0.00" min="1" step="any" />
       </div>
       <div class="section-label">Funding method</div>
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-        <button class="btn btn-violet" id="sipaof-of-btn" onclick="sipAofHandleOfPrimary()" style="flex:1;">Link &amp; pay via AoF</button>
-        <span id="sipaof-of-badge" style="font-size:11px;font-weight:700;color:var(--violet);background:var(--violet-light);padding:4px 10px;border-radius:99px;white-space:nowrap;">Recommended</span>
-      </div>
-      <button class="btn btn-sky" id="sipaof-sip-btn" onclick="sipAofSipTopUp()" style="width:100%;">Pay via SIP (one-off)</button>
+      <button class="btn btn-primary btn-two-line" id="sipaof-of-btn" onclick="sipAofHandleOfPrimary()" data-sub-label="Authorize once and Pay with one tap after" style="margin-bottom:8px;">
+        <span class="btn-main-label">Link &amp; pay via AoF</span><span class="btn-sub-label">Authorize once and Pay with one tap after</span>
+      </button>
+      <button class="btn btn-primary btn-two-line" id="sipaof-sip-btn" onclick="sipAofSipTopUp()" data-sub-label="Authorize every payment">
+        <span class="btn-main-label">Pay via SIP (one-off)</span><span class="btn-sub-label">Authorize every payment</span>
+      </button>
       <p class="status-msg" id="status-sipaof"></p>
     </div>
   </div>
@@ -1094,7 +1101,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <div id="schedule-list-body"><div class="tx-empty">No schedules yet</div></div>
 
     <div class="dev-inline-tool">
-      <button class="btn btn-secondary" id="dev-all-schedules-toggle-btn" onclick="toggleDevAllSchedules()">&#128295; Dev: show ALL app schedules (ignores current session)</button>
+      <button class="btn btn-secondary" id="dev-all-schedules-toggle-btn" onclick="toggleDevAllSchedules()">Show all app schedules (ignores current session)</button>
       <div class="dev-inline-tool-hint" id="dev-all-schedules-hint" style="display:none;">Diagnostic only &mdash; not what a real customer would see. Useful after User Reset, since resetting forgets the old consent locally but doesn't delete schedules on Lean's side.</div>
       <div id="dev-all-schedules-body"></div>
     </div>
@@ -1246,7 +1253,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.0
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.1
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -1327,7 +1334,29 @@ body.phone-widget-active #lean-sdk-iframe {
   <div class="phone-frame">
     <button class="phone-close" onclick="closeMobileApp()">&times;</button>
     <div class="phone-screen">
-      <div class="phone-statusbar"><span id="mobile-clock">9:41</span><span>&#128246; &#128267;</span></div>
+      <div class="phone-statusbar">
+        <div class="dynamic-island"></div>
+        <span id="mobile-clock">9:41</span>
+        <div class="phone-statusbar-icons">
+          <svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor" aria-hidden="true">
+            <rect x="0" y="7" width="3.2" height="5" rx="0.8"/>
+            <rect x="4.9" y="5" width="3.2" height="7" rx="0.8"/>
+            <rect x="9.8" y="2.5" width="3.2" height="9.5" rx="0.8"/>
+            <rect x="14.7" y="0" width="3.2" height="12" rx="0.8"/>
+          </svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M1 4.3C4.6 1.1 11.4 1.1 15 4.3"/>
+            <path d="M3.4 7C5.7 4.9 10.3 4.9 12.6 7"/>
+            <path d="M6.1 9.6C7.1 8.7 8.9 8.7 9.9 9.6"/>
+            <circle cx="8" cy="11.2" r="0.9" fill="currentColor" stroke="none"/>
+          </svg>
+          <svg width="26" height="13" viewBox="0 0 26 13" fill="none" aria-hidden="true">
+            <rect x="0.75" y="0.75" width="21.5" height="11.5" rx="3.2" stroke="currentColor" stroke-width="1" opacity="0.4"/>
+            <rect x="2.25" y="2.25" width="16.5" height="8.5" rx="1.8" fill="currentColor"/>
+            <rect x="23.2" y="4" width="1.6" height="5" rx="0.8" fill="currentColor" opacity="0.4"/>
+          </svg>
+        </div>
+      </div>
       <div class="phone-app-header"><div class="phone-app-title" id="mobile-app-title">Portfolio</div></div>
 
       <div class="phone-content">
@@ -2029,7 +2058,13 @@ function setLoading(btnId, loading, label = "Deposit funds") {
     btn.innerHTML = `<span class="spinner"></span> Working…`;
   } else {
     btn.disabled = false;
-    btn.textContent = label;
+    // Two-line buttons (main label + sub-label, e.g. the SIP+AoF card) carry
+    // their sub-label in data-sub-label — restore both spans instead of
+    // collapsing to plain text, which would silently drop the sub-label.
+    const subLabel = btn.dataset.subLabel;
+    btn.innerHTML = subLabel
+      ? `<span class="btn-main-label">${label}</span><span class="btn-sub-label">${subLabel}</span>`
+      : label;
   }
 }
 
@@ -3112,17 +3147,20 @@ function pollForSipPayment() {
 // disappears once AoF is authorised.
 function setSipAofAmount(v) { document.getElementById("sipaof-amount").value = v; }
 
+function setSipAofBtnMainLabel(btn, mainLabel) {
+  const span = btn.querySelector(".btn-main-label");
+  if (span) span.textContent = mainLabel;
+  else btn.innerHTML = `<span class="btn-main-label">${mainLabel}</span><span class="btn-sub-label">${btn.dataset.subLabel || ""}</span>`;
+}
+
 function renderSipAofCard() {
-  const ofBtn   = document.getElementById("sipaof-of-btn");
-  const ofBadge = document.getElementById("sipaof-of-badge");
-  const sipBtn  = document.getElementById("sipaof-sip-btn");
+  const ofBtn  = document.getElementById("sipaof-of-btn");
+  const sipBtn = document.getElementById("sipaof-sip-btn");
   if (consentStatus === "AUTHORISED") {
-    ofBtn.textContent = "Pay via AoF";
-    ofBadge.style.display = "none";
+    setSipAofBtnMainLabel(ofBtn, "Pay via AoF");
     sipBtn.style.display = "none";
   } else {
-    ofBtn.textContent = "Link & pay via AoF";
-    ofBadge.style.display = "inline-block";
+    setSipAofBtnMainLabel(ofBtn, "Link & pay via AoF");
     sipBtn.style.display = "block";
   }
 }
@@ -4753,11 +4791,11 @@ async function toggleDevAllSchedules() {
   const body = document.getElementById("dev-all-schedules-body");
   devAllSchedulesOpen = !devAllSchedulesOpen;
   if (devAllSchedulesOpen) {
-    btn.innerHTML = "&#128295; Hide all app schedules";
+    btn.innerHTML = "Hide all app schedules";
     hint.style.display = "block";
     await loadDevAllSchedules();
   } else {
-    btn.innerHTML = "&#128295; Dev: show ALL app schedules (ignores current session)";
+    btn.innerHTML = "Show all app schedules (ignores current session)";
     hint.style.display = "none";
     body.innerHTML = "";
   }
