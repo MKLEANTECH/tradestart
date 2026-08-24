@@ -4,7 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>TradeStart</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36' fill='none'%3E%3Cpath d='M18 2L31.2 9.5V24.5L18 32L4.8 24.5V9.5L18 2Z' fill='%233B82F6'/%3E%3Cpath d='M9.5 21.5L15 15.5L19.5 20L26.5 11' stroke='%231B1B1F' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26.5' cy='11' r='2' fill='%231B1B1F'/%3E%3C/svg%3E" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36' fill='none'%3E%3Cpath d='M18 2L31.2 9.5V24.5L18 32L4.8 24.5V9.5L18 2Z' fill='%233DD68C'/%3E%3Cpath d='M9.5 21.5L15 15.5L19.5 20L26.5 11' stroke='%231B1B1F' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='26.5' cy='11' r='2' fill='%231B1B1F'/%3E%3C/svg%3E" />
+<script>
+// Applied before first paint (synchronous, in <head>) so a returning user
+// with dark mode saved never sees a flash of the light theme first.
+(function() {
+  try { if (localStorage.getItem("ts_theme_v1") === "dark") document.documentElement.setAttribute("data-theme", "dark"); }
+  catch (e) {}
+})();
+</script>
 <script src="https://cdn.leantech.me/link/loader/prod/ae/latest/lean-link-loader.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -12,32 +20,76 @@
 /* ── Reset */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  /* Lean 2.0 brand guide neutrals/black chrome, kept; primary accent reverted
-     to blue per feedback (brand green didn't read well as the primary
-     action color) — --accent-on-dark is the equivalent for use ON the
-     black header specifically, where the plain --blue is too muted. */
+  /* Lean brand green (#3DD68C, from the official "General brand template")
+     is now the primary accent. Its own contrast against white is weak
+     (~1.9:1) — that's almost certainly why an earlier pass at this reverted
+     to blue — so --emerald-dark is a proportionally-darkened variant of the
+     same hue (~4.8:1 against white) used anywhere green sits under white
+     text or reads as small text/icons; the bright brand hex stays reserved
+     for tinted backgrounds, borders, and dark surfaces where it was
+     actually designed to live. --blue is kept only for the CP rail-type
+     tag, which is a category color, not a brand accent. */
   --bg:#F9F9FB;         /* Neutral 2 (light) */
   --surface:#FFFFFF;
   --surface-2:#F2F2F5;  /* Neutral 3 (light) */
   --border:#D3D4DB;     /* Neutral 7 (light) */
   --blue:#3B82F6; --blue-dark:#2563EB; --blue-light:#EFF6FF;
-  --accent-on-dark:#60A5FA; /* accents ON the black header */
+  --accent-on-dark:#3DD68C; /* accents ON dark chrome (ticker, API log drawer) */
   --sky:#72DBF8; --sky-light:#C2F3FF;         /* Blue 3 / Blue 1 */
-  --emerald:#35B979; --emerald-light:#DDF3E4; /* Green 10 / Green 4 */
+  --emerald:#3DD68C; --emerald-dark:#218154; --emerald-light:#DDF3E4; /* Lean brand green */
   --violet:#5B5BD6; --violet-light:#E0DFFE;   /* Iris 4 / Iris 1 */
   --amber:#FFC53D; --amber-light:#FFE7B3;     /* Amber 4 / Amber 1 */
   --red:#E5484D; --red-light:#FDD8D8;         /* Red 9 / Red 5 */
   --text:#1C2024;    /* Neutral 12 (light) */
   --text-2:#60646C;  /* Neutral 11 (light) */
   --text-3:#7E808A;  /* Neutral 10 (light) */
+  /* Flow diagram theme — the generated SVGs (renderCompactFlowSvg/
+     renderWideFlowSvg) read these via style="fill:var(--diagram-x)" instead
+     of hardcoded hex, so toggling dark mode re-colors already-rendered/
+     cached diagrams live, no re-render needed. Light values here match
+     Lean's own docs screenshots (pale yellow banners, lavender actor
+     boxes); the dark override block gives each a contrast-checked
+     equivalent that keeps the same "language" instead of just inverting. */
+  --diagram-bg:#FFFFFF; --diagram-surface-2:#F9FAFB; --diagram-border:#E5E7EB; --diagram-text-2:#6B7280;
+  --diagram-banner-bg:#FEF6DC; --diagram-banner-border:#F0DFA0; --diagram-banner-text:#7C5E10;
+  --diagram-label-text:#374151; --diagram-line:#1F2937; --diagram-lifeline:#D1D5DB;
+  --diagram-actor-bg:#EDE9FE; --diagram-actor-border:#C4B5FD; --diagram-actor-text:#4C1D95;
+  --diagram-arrow-forward:#1D4ED8; --diagram-arrow-return:#7C3AED;
   --radius-sm:8px; --radius:12px; --radius-lg:16px;
   font-family:'Inter',system-ui,-apple-system,sans-serif;
   font-size:15px; line-height:1.6; color:var(--text); font-variant-numeric:tabular-nums;
+  transition:background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+/* Dark theme — Lean's own dark-mode neutrals (bg/surface/text), toggled via
+   [data-theme="dark"] on <html> (see the toggle button + early <head>
+   script). The accent system (--emerald/--emerald-dark/--emerald-light) and
+   every rail/status tint (--blue-light, --red-light, etc.) are left
+   unchanged on purpose — each is already a self-contained light-tint+dark-text
+   or solid-fill+white-text pairing that reads fine regardless of the
+   surrounding page theme, so only the structural neutrals need overriding.
+   The flow-diagram palette is the one deliberate exception: it WAS pinned
+   permanently light (to match Lean's docs screenshots) until that turned
+   out to look broken sitting inside an otherwise-dark card — so it gets a
+   real dark variant here instead, keeping the same yellow-banner/lavender-
+   actor-box "language" rather than just inverting to gray. */
+:root[data-theme="dark"] {
+  --bg:#1B1B1F;
+  --surface:#242429;
+  --surface-2:#2E2F35;
+  --border:#3F4147;
+  --text:#EDEEF0;
+  --text-2:#ADB1B8;
+  --text-3:#787F85;
+  --diagram-bg:#242429; --diagram-surface-2:#2E2F35; --diagram-border:#3F4147; --diagram-text-2:#9CA3AF;
+  --diagram-banner-bg:#4A3F1F; --diagram-banner-border:#6B5A2B; --diagram-banner-text:#F5D97A;
+  --diagram-label-text:#D1D5DB; --diagram-line:#6B7280; --diagram-lifeline:#4B5563;
+  --diagram-actor-bg:#3B3350; --diagram-actor-border:#5B4B7A; --diagram-actor-text:#C4B5FD;
+  --diagram-arrow-forward:#60A5FA; --diagram-arrow-return:#A78BFA;
 }
 body { min-height:100vh; background:var(--bg); display:flex; flex-direction:column; overflow-x:hidden; }
 
 /* Ticker */
-.ticker-strip { background:var(--text); color:#fff; height:32px; display:flex; align-items:center; overflow:hidden; font-size:12px; font-weight:500; flex-shrink:0; }
+.ticker-strip { background:#1C2024; color:#fff; height:32px; display:flex; align-items:center; overflow:hidden; font-size:12px; font-weight:500; flex-shrink:0; }
 .ticker-inner { display:flex; gap:0; white-space:nowrap; animation:ticker 32s linear infinite; }
 .ticker-item { display:flex; align-items:center; gap:6px; padding:0 24px; border-right:1px solid rgba(255,255,255,0.1); }
 .ticker-item .sym { color:rgba(255,255,255,0.55); }
@@ -65,9 +117,10 @@ header { background:var(--surface); border-bottom:1px solid var(--border); paddi
 .top-nav::-webkit-scrollbar { display:none; }
 .nav-tab { flex:1; min-width:104px; padding:6px 10px; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-family:inherit; border:none; cursor:pointer; background:transparent; color:var(--text-3); transition:all 0.15s; }
 .nav-tab:hover { background:var(--surface-2); color:var(--text-2); }
-.nav-tab.active { color:var(--blue-dark); background:var(--blue-light); }
+.nav-tab.active { color:var(--emerald-dark); background:var(--emerald-light); }
 .nav-tab .tab-main { display:flex; align-items:center; gap:8px; font-size:14.5px; font-weight:700; }
 .nav-tab .tab-icon { font-size:18px; line-height:1; }
+.nav-tab .tab-icon svg { display:block; width:18px; height:18px; stroke:currentColor; }
 
 /* Main + pages — wide layout so tabs use the full window instead of one
    narrow centered column. Two-column pages collapse to one below 920px. */
@@ -88,7 +141,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 
 .integrations-card-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:16px; }
 .integration-card { cursor:pointer; transition:all 0.15s; }
-.integration-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.06); }
+.integration-card:hover { border-color:var(--emerald); transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,0.06); }
 .integration-card .card-subtitle { margin-bottom:0; }
 
 /* Right-side flow diagram, shown on every integration type's own page —
@@ -101,24 +154,61 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .flow-diagram-panel-header .card-eyebrow { margin-bottom:0; }
 .flow-diagram-panel-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
 .flow-diagram-panel-actions .btn { width:auto; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; }
-.flow-diagram-svg-wrap { overflow-x:auto; }
+/* Both the inline diagram and its "view as image" modal render either a
+   real screenshot from Lean's docs (a static image — genuinely can't be
+   recolored, it'll always show its own light native colors, same as any
+   embedded photo) or a generated SVG styled to match that look. The SVG
+   case IS fully theme-aware: renderCompactFlowSvg/renderWideFlowSvg paint
+   with style="fill:var(--diagram-x)" instead of hardcoded hex, reading the
+   --diagram-* palette defined in :root / :root[data-theme="dark"] above —
+   toggling the theme re-colors already-rendered/cached diagrams live. */
+.flow-diagram-svg-wrap { overflow-x:auto; background:var(--diagram-bg); border:1px solid var(--diagram-border); border-radius:10px; padding:14px; }
 
 /* "View as image" popup — same overlay pattern as the info/success modals,
    just sized to show a diagram at full, legible size. */
-.diagram-image-modal { background:var(--surface); border-radius:14px; max-width:min(1100px, 95vw); width:100%; max-height:92vh; overflow:hidden; padding:24px; position:relative; box-shadow:0 24px 60px rgba(15,23,42,0.3); display:flex; flex-direction:column; }
+.diagram-image-modal { background:var(--diagram-bg); border-radius:14px; max-width:min(1100px, 95vw); width:100%; max-height:92vh; overflow:hidden; padding:24px; position:relative; box-shadow:0 24px 60px rgba(15,23,42,0.3); display:flex; flex-direction:column; }
 .diagram-image-modal img { display:block; width:auto; height:auto; max-width:100%; max-height:78vh; margin:0 auto; object-fit:contain; }
-.diagram-image-source-note { font-size:11.5px; color:var(--text-3); margin-top:10px; text-align:center; }
+.diagram-image-modal .card-eyebrow { color:var(--diagram-text-2); }
+.diagram-image-modal .info-modal-close { background:var(--diagram-surface-2); color:var(--diagram-text-2); }
+.diagram-image-modal .info-modal-close:hover { color:var(--diagram-line); }
+.diagram-image-source-note { font-size:11.5px; color:var(--diagram-text-2); margin-top:10px; text-align:center; }
+/* Zoom toolbar — the generated SVGs/docs screenshots can be dense at 100%,
+   so the modal's content scales via CSS transform (see setDiagramZoom())
+   with this viewport handling the resulting overflow via click-and-drag
+   panning (initDiagramInteractions()) instead of clipping or growing the modal. */
+.diagram-image-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; padding-right:36px; flex-shrink:0; }
+.diagram-image-header .card-eyebrow { margin-bottom:0; }
+/* One button cycles 100% → 150% → 200% → 250% → back to 100%, rather than
+   separate +/- controls — a single click target is simpler to reach for
+   than aiming at two small buttons repeatedly. */
+.diagram-zoom-btn { width:auto; padding:0 10px; height:28px; border-radius:6px; border:1px solid var(--diagram-border); background:var(--diagram-surface-2); color:var(--diagram-text-2); font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; display:flex; align-items:center; gap:6px; justify-content:center; flex-shrink:0; transition:all 0.15s; }
+.diagram-zoom-btn:hover { border-color:var(--emerald); color:var(--emerald-dark); background:var(--emerald-light); }
+.diagram-zoom-btn svg { width:14px; height:14px; stroke:currentColor; }
+.diagram-image-viewport { flex:1; min-height:0; overflow:auto; cursor:default; }
+.diagram-image-viewport.zoomable { cursor:grab; }
+.diagram-image-viewport.dragging { cursor:grabbing; user-select:none; }
+.diagram-image-viewport #diagram-image-svg { transform-origin:top left; transition:transform 0.15s ease; }
+.diagram-image-modal img { -webkit-user-drag:none; user-select:none; }
 
 /* Connect */
 .connect-area { background:var(--surface-2); border:1.5px dashed var(--border); border-radius:var(--radius); padding:28px 20px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:12px; }
-.connect-icon { width:56px; height:56px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:26px; background:var(--blue-light); border:1px solid rgba(59,130,246,0.15); }
+.connect-icon { width:56px; height:56px; border-radius:var(--radius); display:flex; align-items:center; justify-content:center; font-size:26px; background:var(--emerald-light); border:1px solid rgba(61,214,140,0.25); }
 .connect-area h3 { font-size:17px; font-weight:700; color:var(--text); }
 .connect-area p  { font-size:13px; color:var(--text-2); line-height:1.55; max-width:280px; }
 
 /* Link method choice */
 
 /* Balance */
-.balance-card { background:linear-gradient(135deg,var(--blue-light) 0%,#F0FDF4 100%); border:1px solid #BFDBFE; border-radius:var(--radius); padding:18px 20px; margin-bottom:20px; }
+/* Fixed-light-tint cards (background never flips with theme, see
+   --emerald-light) whose content otherwise uses the normal
+   --text/--text-2/--text-3 vars — which flip to light colors in dark mode
+   and go invisible on a card that's always light. Re-pinning the neutrals
+   locally fixes every descendant (current and future) in one place instead
+   of chasing each child selector. */
+.balance-card, .m-balance-card, .data-section, .trading-balance-row, .m-method-card.recommended {
+  --text:#1C2024; --text-2:#60646C; --text-3:#7E808A;
+}
+.balance-card { background:linear-gradient(135deg,var(--emerald-light) 0%,#F0FDF4 100%); border:1px solid #A7F3D0; border-radius:var(--radius); padding:18px 20px; margin-bottom:20px; }
 .balance-label { font-size:12px; font-weight:600; color:var(--text-3); letter-spacing:0.4px; text-transform:uppercase; display:flex; align-items:center; gap:6px; }
 .live-dot { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; color:var(--emerald); }
 .live-dot::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--emerald); animation:pulse 2s infinite; }
@@ -127,7 +217,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 
 /* Identity */
 .identity-card { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
-.identity-avatar { width:38px; height:38px; border-radius:50%; background:var(--blue-light); border:1px solid rgba(59,130,246,0.2); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.identity-avatar { width:38px; height:38px; border-radius:50%; background:var(--emerald-light); border:1px solid rgba(61,214,140,0.3); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
 .identity-name { font-size:14px; font-weight:700; color:var(--text); }
 .identity-iban  { font-size:11px; color:var(--text-3); font-family:'JetBrains Mono',monospace; margin-top:1px; }
 
@@ -141,22 +231,22 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 
 .data-section-heading { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:700; color:var(--text); margin:24px 0 12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
 .data-section-heading:first-of-type { margin-top:0; }
-.data-section-heading .icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; background:var(--blue-light); }
-.data-section { border-radius:var(--radius); padding:14px 16px; background:var(--blue-light); }
+.data-section-heading .icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; background:var(--emerald-light); }
+.data-section { border-radius:var(--radius); padding:14px 16px; background:var(--emerald-light); }
 .data-section .recon-table th { border-bottom-color:rgba(0,0,0,0.08); }
 .data-section .recon-table tr:not(:last-child) td { border-bottom-color:rgba(0,0,0,0.08); }
 
 /* Inputs */
 .quick-amounts { display:flex; gap:8px; margin-bottom:10px; }
 .quick-btn { flex:1; padding:8px 6px; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); font-size:13px; font-weight:600; color:var(--text-2); cursor:pointer; font-family:inherit; transition:all 0.15s; }
-.quick-btn:hover { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.quick-btn:hover { border-color:var(--emerald); color:var(--emerald-dark); background:var(--emerald-light); }
 .input-wrap { display:flex; align-items:center; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); overflow:hidden; transition:border-color 0.15s; margin-bottom:12px; }
-.input-wrap:focus-within { border-color:var(--blue); }
+.input-wrap:focus-within { border-color:var(--emerald); }
 .input-prefix { padding:0 14px; font-size:14px; font-weight:600; color:var(--text-3); border-right:1.5px solid var(--border); background:var(--surface-2); align-self:stretch; display:flex; align-items:center; }
 .input-wrap input { flex:1; border:none; outline:none; font-size:22px; font-weight:600; color:var(--text); padding:12px 16px; font-family:inherit; background:transparent; font-variant-numeric:tabular-nums; }
 .input-wrap input::placeholder { color:var(--text-3); font-weight:400; font-size:18px; }
 .date-input { width:100%; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); font-size:14px; font-weight:500; color:var(--text); padding:11px 14px; font-family:inherit; transition:border-color 0.15s; }
-.date-input:focus { outline:none; border-color:var(--blue); }
+.date-input:focus { outline:none; border-color:var(--emerald); }
 
 /* One standard for every plain text field (reference, description, name,
    IBAN, ID...) app-wide — same size/weight/padding as .date-input, so a
@@ -175,7 +265,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
    stitched together. Self-contained (border+background+padding of its
    own) — do NOT also nest one inside .input-wrap, or the borders double up. */
 .select-input { display:block; width:100%; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); font-size:14px; font-weight:500; color:var(--text); padding:11px 36px 11px 14px; font-family:inherit; transition:border-color 0.15s; margin-bottom:12px; cursor:pointer; appearance:none; -webkit-appearance:none; -moz-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394A3B8' stroke-width='1.8'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:14px; }
-.select-input:focus { outline:none; border-color:var(--blue); }
+.select-input:focus { outline:none; border-color:var(--emerald); }
 
 /* Deliberately distinct from .text-field: a readonly, click-to-copy URL
    needs to fit more characters per line and reads better monospaced — but
@@ -209,10 +299,10 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
    follow the same shape rather than the old 8px rounded-rect. */
 .btn { -webkit-appearance:none; appearance:none; box-sizing:border-box; line-height:1.2; display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; border-radius:999px; font-size:15px; font-weight:600; font-family:inherit; cursor:pointer; transition:all 0.15s; border:none; }
 .btn:disabled { opacity:0.45; cursor:not-allowed; }
-.btn-primary  { background:var(--blue);   color:#fff; }
-.btn-primary:hover:not(:disabled)  { background:var(--blue-dark); }
+.btn-primary  { background:var(--emerald-dark);   color:#fff; }
+.btn-primary:hover:not(:disabled)  { background:#186B45; }
 .btn-secondary{ background:var(--surface-2); color:var(--text-2); border:1.5px solid var(--border); }
-.btn-secondary:hover:not(:disabled){ border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.btn-secondary:hover:not(:disabled){ border-color:var(--emerald); color:var(--emerald-dark); background:var(--emerald-light); }
 .btn-violet   { background:var(--violet); color:#fff; }
 .btn-violet:hover:not(:disabled)   { background:#7C3AED; }
 .btn-sky      { background:var(--sky);    color:#fff; }
@@ -232,9 +322,9 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 /* Method picker (RE / SIP / AOF choice on deposit) */
 .method-pills { display:flex; gap:8px; margin-bottom:6px; }
 .method-pill { flex:1; padding:12px 6px; border-radius:var(--radius-sm); font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; border:1.5px solid var(--border); background:var(--surface); color:var(--text-2); transition:all .15s; }
-.method-pill:hover:not(:disabled) { border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.method-pill:hover:not(:disabled) { border-color:var(--emerald); color:var(--emerald-dark); background:var(--emerald-light); }
 .method-pill.disabled, .method-pill:disabled { opacity:.4; cursor:not-allowed; }
-.method-pill.active { border-color:var(--blue); color:var(--blue-dark); background:var(--blue-light); }
+.method-pill.active { border-color:var(--emerald); color:var(--emerald-dark); background:var(--emerald-light); }
 .dev-inline-tool { margin-top:16px; padding-top:14px; border-top:1px dashed var(--border); }
 .dev-inline-tool-hint { font-size:11px; color:var(--text-3); margin:6px 0 10px; }
 .dev-schedule-row-wrap { padding:10px 0; border-bottom:1px solid var(--border); }
@@ -282,7 +372,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 #payout-list-body, #recon-body, #refund-list-body { max-height:56vh; overflow-y:auto; padding-right:4px; }
 
 /* Info banner */
-.info-banner { background:var(--blue-light); border:1px solid #BFDBFE; border-radius:var(--radius); padding:12px 16px; font-size:13px; color:#1E40AF; margin-bottom:16px; display:flex; align-items:flex-start; gap:10px; }
+.info-banner { background:var(--emerald-light); border:1px solid #A7F3D0; border-radius:var(--radius); padding:12px 16px; font-size:13px; color:#065F46; margin-bottom:16px; display:flex; align-items:flex-start; gap:10px; }
 
 /* Stat cards */
 .stat-row { display:flex; gap:10px; margin-bottom:16px; }
@@ -296,7 +386,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .recon-title   { font-size:15px; font-weight:700; color:var(--text); }
 .recon-subtitle{ font-size:12px; color:var(--text-3); margin-top:2px; }
 .recon-refresh { background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px 14px; font-size:12px; font-weight:600; color:var(--text-2); cursor:pointer; font-family:inherit; transition:all 0.15s; display:flex; align-items:center; gap:5px; }
-.recon-refresh:hover { border-color:var(--blue); color:var(--blue); }
+.recon-refresh:hover { border-color:var(--emerald); color:var(--emerald-dark); }
 .recon-refresh:disabled { opacity:0.5; cursor:not-allowed; }
 .recon-empty { text-align:center; padding:32px 0; color:var(--text-3); font-size:13px; }
 .recon-empty-icon { font-size:32px; margin-bottom:10px; }
@@ -323,7 +413,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .dev-btn-floating:hover { border-color:var(--red); color:var(--red); box-shadow:0 6px 18px rgba(15,23,42,0.16); }
 
 .info-banner-trigger { cursor:pointer; transition:border-color 0.15s; }
-.info-banner-trigger:hover { border-color:var(--blue); }
+.info-banner-trigger:hover { border-color:var(--emerald); }
 .info-modal-overlay { position:fixed; inset:0; background:rgba(15,23,42,0.45); display:none; align-items:center; justify-content:center; z-index:300; padding:20px; }
 .info-modal-overlay.open { display:flex; }
 .info-modal { background:var(--surface); border-radius:14px; max-width:440px; width:100%; max-height:82vh; overflow-y:auto; padding:24px; position:relative; box-shadow:0 24px 60px rgba(15,23,42,0.3); }
@@ -332,8 +422,10 @@ footer a { color:var(--text-3); text-decoration:none; }
 .info-modal-list { margin:0; padding-left:18px; font-size:13px; color:var(--text-2); line-height:1.65; }
 .info-modal-list li { margin-bottom:6px; }
 .info-modal-list li:last-child { margin-bottom:0; }
-.page-help-btn { position:fixed; bottom:24px; left:24px; z-index:90; width:38px; height:38px; border-radius:50%; background:var(--blue-light); border:1.5px solid var(--blue); color:var(--blue-dark); font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
-.page-help-btn:hover { background:var(--blue); color:#fff; box-shadow:0 6px 18px rgba(15,23,42,0.16); }
+.theme-toggle-btn { position:fixed; bottom:24px; left:24px; z-index:90; width:38px; height:38px; display:flex; align-items:center; justify-content:center; padding:0; border-radius:50%; background:var(--surface-2); border:1.5px solid var(--border); color:var(--text-2); font-size:16px; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
+.theme-toggle-btn:hover { border-color:var(--emerald); color:var(--emerald-dark); }
+.page-help-btn { position:fixed; bottom:24px; left:74px; z-index:90; width:38px; height:38px; border-radius:50%; background:var(--emerald-light); border:1.5px solid var(--emerald); color:var(--emerald-dark); font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
+.page-help-btn:hover { background:var(--emerald-dark); color:#fff; box-shadow:0 6px 18px rgba(15,23,42,0.16); }
 
 /* API Activity sidebar — collapsible console of every request/response the
    app makes, toggled from a floating button (bottom-left, stacked below
@@ -345,8 +437,8 @@ footer a { color:var(--text-3); text-decoration:none; }
 /* z-index above .phone-overlay (400) — otherwise this button (and the drawer
    below) become unclickable, covered by the phone preview's backdrop, right
    when you'd most want to watch calls made from inside it. */
-.api-log-toggle { position:fixed; bottom:24px; left:74px; z-index:401; width:38px; height:38px; display:flex; align-items:center; justify-content:center; padding:0; background:var(--blue-light); border:1.5px solid var(--blue); border-radius:50%; color:var(--blue-dark); cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
-.api-log-toggle:hover { background:var(--blue); color:#fff; box-shadow:0 6px 18px rgba(15,23,42,0.16); }
+.api-log-toggle { position:fixed; bottom:24px; left:124px; z-index:401; width:38px; height:38px; display:flex; align-items:center; justify-content:center; padding:0; background:var(--emerald-light); border:1.5px solid var(--emerald); border-radius:50%; color:var(--emerald-dark); cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
+.api-log-toggle:hover { background:var(--emerald-dark); color:#fff; box-shadow:0 6px 18px rgba(15,23,42,0.16); }
 .api-log-toggle-icon { font-size:16px; line-height:1; }
 .api-log-badge { position:absolute; top:-4px; right:-4px; background:var(--red); color:#fff; border-radius:999px; padding:1px 5px; font-size:10px; font-weight:700; min-width:16px; line-height:1.4; text-align:center; box-shadow:0 0 0 2px var(--bg); }
 .api-log-badge.empty { display:none; }
@@ -362,7 +454,7 @@ footer a { color:var(--text-3); text-decoration:none; }
    off for the duration of the drag only. */
 .api-log-drawer.resizing { transition:none; }
 .api-log-resize-handle { position:absolute; top:0; left:0; bottom:0; width:6px; cursor:ew-resize; z-index:2; }
-.api-log-resize-handle:hover, .api-log-drawer.resizing .api-log-resize-handle { background:rgba(59,130,246,0.45); }
+.api-log-resize-handle:hover, .api-log-drawer.resizing .api-log-resize-handle { background:rgba(61,214,140,0.45); }
 .api-log-drawer.pinned { box-shadow:-10px 0 30px rgba(0,0,0,0.3), inset 3px 0 0 var(--accent-on-dark); }
 .api-log-header { display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-bottom:1px solid #1E293B; flex-shrink:0; }
 .api-log-title { font-size:13px; font-weight:700; color:#F8FAFC; }
@@ -415,8 +507,8 @@ footer a { color:var(--text-3); text-decoration:none; }
    tabs already use, just with the mobile screen's own DOM ids. */
 /* Floating bottom-right, stacked above the User Reset dev button — kept
    out of the header entirely now (that's the whole point of "floating"). */
-.mobile-app-fab { display:flex; align-items:center; gap:6px; background:var(--blue); border:1px solid var(--blue-dark); border-radius:999px; padding:11px 18px; font-size:13px; font-weight:700; font-family:inherit; color:#fff; cursor:pointer; white-space:nowrap; box-shadow:0 4px 14px rgba(37,99,235,0.3); transition:all 0.15s; }
-.mobile-app-fab:hover { background:var(--blue-dark); box-shadow:0 6px 18px rgba(37,99,235,0.4); }
+.mobile-app-fab { display:flex; align-items:center; gap:6px; background:var(--emerald-dark); border:1px solid #186B45; border-radius:999px; padding:11px 18px; font-size:13px; font-weight:700; font-family:inherit; color:#fff; cursor:pointer; white-space:nowrap; box-shadow:0 4px 14px rgba(33,129,84,0.3); transition:all 0.15s; }
+.mobile-app-fab:hover { background:#186B45; box-shadow:0 6px 18px rgba(33,129,84,0.4); }
 
 .phone-overlay { position:fixed; inset:0; background:#1E293B; display:none; align-items:center; justify-content:center; z-index:400; padding:24px; transition:padding-right 0.22s ease; }
 .phone-overlay.open { display:flex; }
@@ -447,20 +539,25 @@ footer a { color:var(--text-3); text-decoration:none; }
 .phone-bottom-nav { flex-shrink:0; display:flex; background:var(--surface); border-top:1px solid var(--border); padding:8px 4px calc(8px + env(safe-area-inset-bottom, 0px)); }
 .mtab-btn { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; font-family:inherit; border:none; background:transparent; color:var(--text-3); cursor:pointer; font-size:10.5px; font-weight:600; border-radius:10px; transition:all 0.15s; }
 .mtab-btn .mtab-icon { font-size:19px; line-height:1; }
-.mtab-btn.active { color:var(--blue-dark); }
+.mtab-btn.active { color:var(--emerald-dark); }
 .mtab-btn:hover { background:var(--surface-2); }
 
 .m-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-3); }
 .m-section-label { font-size:11px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-3); margin-bottom:2px; }
 
 /* Portfolio */
-.m-balance-card { background:linear-gradient(135deg,var(--blue-light) 0%,#F0FDF4 100%); border:1px solid #BFDBFE; border-radius:var(--radius); padding:18px 20px; }
+.m-balance-card { background:linear-gradient(135deg,var(--emerald-light) 0%,#F0FDF4 100%); border:1px solid #A7F3D0; border-radius:var(--radius); padding:18px 20px; }
 .m-balance-card .balance-label { font-size:11px; font-weight:600; color:var(--text-3); letter-spacing:0.4px; text-transform:uppercase; }
 .m-balance-card .balance-amount { font-size:30px; font-weight:700; letter-spacing:-1px; color:var(--text); margin-top:4px; }
 .m-balance-card .balance-amount .currency { font-size:16px; font-weight:600; color:var(--text-2); margin-right:3px; }
 .holding-row { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--border); }
 .holding-row:last-child { border-bottom:none; }
-.holding-sym { width:38px; height:38px; border-radius:10px; background:var(--blue-light); border:1px solid rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--blue-dark); flex-shrink:0; }
+/* Just the bare favicon, no container box — via Google's favicon service
+   since it's been stable for years and needs no key. Falls back to the
+   ticker letters (onerror, see renderMobilePortfolio) if the image can't
+   load, so it never shows a broken image. */
+.holding-sym { width:38px; height:38px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:var(--text-2); flex-shrink:0; }
+.holding-sym img { width:32px; height:32px; object-fit:contain; }
 .holding-info { flex:1; min-width:0; }
 .holding-name { font-size:13.5px; font-weight:700; color:var(--text); }
 .holding-qty { font-size:11.5px; color:var(--text-3); margin-top:1px; }
@@ -471,20 +568,22 @@ footer a { color:var(--text-3); text-decoration:none; }
 
 /* Deposits — payment method */
 .m-method-card { border:1.5px solid var(--border); border-radius:var(--radius); padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:all 0.15s; }
-.m-method-card.recommended { border-color:var(--blue); background:var(--blue-light); }
+.m-method-card.recommended { border-color:var(--emerald); background:var(--emerald-light); }
 .m-method-card:active { transform:scale(0.98); }
 .m-method-card.loading { opacity:0.6; pointer-events:none; }
-.m-method-icon { width:40px; height:40px; border-radius:10px; background:var(--blue-light); border:1px solid rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.m-method-icon { width:24px; height:24px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.m-method-icon svg { width:24px; height:24px; stroke:currentColor; }
+.m-method-name-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .m-method-info { flex:1; min-width:0; }
 .m-method-name { font-size:14px; font-weight:700; color:var(--text); }
-.m-recommended-tag { display:inline-flex; margin:4px 0 1px; font-size:9.5px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; padding:2px 7px; border-radius:99px; background:var(--blue); color:#fff; }
+.m-recommended-tag { display:inline-flex; font-size:9.5px; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; padding:2px 7px; border-radius:99px; background:var(--emerald-dark); color:#fff; }
 .m-method-sub { font-size:11.5px; color:var(--text-3); margin-top:1px; }
 .m-method-badge { font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:99px; white-space:nowrap; flex-shrink:0; background:var(--surface-2); color:var(--text-3); border:1px solid var(--border); }
 .m-method-badge.linked { background:var(--emerald-light); color:#065F46; border-color:#A7F3D0; }
 
 /* Profile */
 .m-profile-header { display:flex; align-items:center; gap:12px; padding-bottom:4px; }
-.m-profile-avatar { width:48px; height:48px; border-radius:50%; background:var(--blue); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.m-profile-avatar { width:48px; height:48px; border-radius:50%; background:var(--emerald-dark); color:#fff; font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .m-profile-name { font-size:15px; font-weight:700; color:var(--text); }
 .m-profile-email { font-size:12px; color:var(--text-3); margin-top:1px; }
 .m-profile-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; }
@@ -497,8 +596,8 @@ footer a { color:var(--text-3); text-decoration:none; }
 .m-account-info { flex:1; min-width:0; }
 .m-account-name { font-size:13.5px; font-weight:700; color:var(--text); }
 .m-account-iban { font-size:11px; color:var(--text-3); font-family:'JetBrains Mono',monospace; margin-top:1px; }
-.m-account-edit-btn { flex-shrink:0; font-size:12px; font-weight:700; padding:6px 14px; border-radius:99px; border:1.5px solid var(--blue); background:var(--blue-light); color:var(--blue-dark); cursor:pointer; font-family:inherit; }
-.m-account-edit-btn:hover { background:var(--blue); color:#fff; }
+.m-account-edit-btn { flex-shrink:0; font-size:12px; font-weight:700; padding:6px 14px; border-radius:99px; border:1.5px solid var(--emerald); background:var(--emerald-light); color:var(--emerald-dark); cursor:pointer; font-family:inherit; }
+.m-account-edit-btn:hover { background:var(--emerald-dark); color:#fff; }
 
 /* Pin the Lean SDK's #lean-sdk-iframe (normally inline-styled to cover the
    full viewport) to the phone screen's own box instead — see
@@ -551,7 +650,7 @@ body.phone-widget-active #lean-sdk-iframe {
 <header>
   <a href="#" class="logo">
     <svg class="logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18 2L31.2 9.5V24.5L18 32L4.8 24.5V9.5L18 2Z" fill="#3B82F6"/>
+      <path d="M18 2L31.2 9.5V24.5L18 32L4.8 24.5V9.5L18 2Z" fill="#3DD68C"/>
       <path d="M9.5 21.5L15 15.5L19.5 20L26.5 11" stroke="#1B1B1F" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
       <circle cx="26.5" cy="11" r="2" fill="#1B1B1F"/>
     </svg>
@@ -562,31 +661,31 @@ body.phone-widget-active #lean-sdk-iframe {
 
   <nav class="top-nav">
     <button class="nav-tab active" id="nav-INTEGRATIONS" onclick="switchPage('INTEGRATIONS')">
-      <span class="tab-main"><span class="tab-icon">&#128268;</span>Integrations</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="2" stroke-width="1.8"/><rect x="13" y="3" width="8" height="8" rx="2" stroke-width="1.8"/><rect x="3" y="13" width="8" height="8" rx="2" stroke-width="1.8"/><rect x="13" y="13" width="8" height="8" rx="2" stroke-width="1.8"/></svg></span>Integrations</span>
     </button>
     <button class="nav-tab" id="nav-AOF" onclick="switchPage('AOF')">
-      <span class="tab-main"><span class="tab-icon">&#128274;</span>AoF</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke-width="1.8"/><path d="M8 11V7a4 4 0 018 0v4" stroke-width="1.8" stroke-linecap="round"/></svg></span>AoF</span>
     </button>
     <button class="nav-tab" id="nav-SIP" onclick="switchPage('SIP')">
-      <span class="tab-main"><span class="tab-icon">&#9889;</span>SIP</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke-width="1.8" stroke-linejoin="round"/></svg></span>SIP</span>
     </button>
     <button class="nav-tab" id="nav-RECON" onclick="switchPage('RECON')">
-      <span class="tab-main"><span class="tab-icon">&#128202;</span>Recon</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M12 20V4M20 20v-7" stroke-width="1.8" stroke-linecap="round"/></svg></span>Recon</span>
     </button>
     <button class="nav-tab" id="nav-PAYOUT" onclick="switchPage('PAYOUT')">
-      <span class="tab-main"><span class="tab-icon">&#128184;</span>Payout</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" stroke-width="1.8"/></svg></span>Payout</span>
     </button>
     <button class="nav-tab" id="nav-REFUND" onclick="switchPage('REFUND')">
-      <span class="tab-main"><span class="tab-icon">&#8617;&#65039;</span>Refund</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M9 14L4 9l5-5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10a6 6 0 016 6v1" stroke-width="1.8" stroke-linecap="round"/></svg></span>Refund</span>
     </button>
     <button class="nav-tab" id="nav-SCHEDULE" onclick="switchPage('SCHEDULE')">
-      <span class="tab-main"><span class="tab-icon">&#128197;</span>Schedule</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke-width="1.8"/><path d="M3 9h18M8 3v4M16 3v4" stroke-width="1.8" stroke-linecap="round"/></svg></span>Schedule</span>
     </button>
     <button class="nav-tab" id="nav-AVS" onclick="switchPage('AVS')">
-      <span class="tab-main"><span class="tab-icon">&#128269;</span>AVS</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>AVS</span>
     </button>
     <button class="nav-tab" id="nav-LINKS" onclick="switchPage('LINKS')">
-      <span class="tab-main"><span class="tab-icon">&#128279;</span>Links</span>
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M10 13a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Links</span>
     </button>
   </nav>
 
@@ -785,7 +884,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <div class="card-subtitle">Redirect to your bank's own portal to authorize. No credentials shared with us — you won't be asked again.</div>
     <div class="connect-area">
       <div class="connect-icon">&#128274;</div>
-      <button class="btn btn-violet" id="btn-link-aof" onclick="startLinkOF()" style="width:100%;max-width:280px;">Link via OF</button>
+      <button class="btn btn-primary" id="btn-link-aof" onclick="startLinkOF()" style="width:100%;max-width:280px;">Link via OF</button>
     </div>
     <p class="status-msg" id="status-aof-link"></p>
   </div>
@@ -834,6 +933,7 @@ body.phone-widget-active #lean-sdk-iframe {
 <div class="page" id="page-SIP">
 <button class="page-help-btn" onclick="openInfoModal('SIP')" title="Why SIP?">?</button>
 <div class="flow-diagram-layout">
+<div class="col-stack">
   <div class="card" id="sip-form-card">
     <div class="card-eyebrow">Open Finance — Single Instant Payment</div>
     <div class="card-title">Pay via SIP</div>
@@ -856,6 +956,14 @@ body.phone-widget-active #lean-sdk-iframe {
     <button class="btn btn-primary" id="btn-sip-standalone" onclick="handleSipStandaloneCheckout()">Checkout via SIP</button>
     <p class="status-msg" id="status-sip-standalone"></p>
   </div>
+
+  <div class="card">
+    <div class="card-title">Consent management</div>
+    <div class="card-subtitle">Review or manage the payment-history consent Lean holds for your past SIP payments — no standing payment consent exists to revoke, since each SIP checkout is a one-off.</div>
+    <button class="btn btn-secondary" onclick="sipManageConsents()">Manage consent</button>
+    <p class="status-msg" id="status-sip-consent"></p>
+  </div>
+</div>
   <div class="card flow-diagram-panel">
     <div class="flow-diagram-panel-header">
       <div class="card-eyebrow">SIP Only — Flow Breakdown</div>
@@ -935,7 +1043,7 @@ body.phone-widget-active #lean-sdk-iframe {
         </div>
       </div>
     </div>
-    <button class="btn btn-danger" id="btn-payout" onclick="handlePayout()" style="margin-top:12px;">Withdraw to bank</button>
+    <button class="btn btn-primary" id="btn-payout" onclick="handlePayout()" style="margin-top:12px;">Withdraw to bank</button>
     <p class="status-msg" id="status-payout"></p>
   </div>
 
@@ -1253,7 +1361,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.2
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.3
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -1292,10 +1400,23 @@ body.phone-widget-active #lean-sdk-iframe {
 <div class="info-modal-overlay" id="diagram-image-overlay" onclick="if(event.target===this) closeDiagramImageModal()">
   <div class="diagram-image-modal" id="diagram-image-content">
     <button class="info-modal-close" onclick="closeDiagramImageModal()">&times;</button>
-    <div class="card-eyebrow" id="diagram-image-title">Flow diagram</div>
-    <div id="diagram-image-svg"></div>
+    <div class="diagram-image-header">
+      <div class="card-eyebrow" id="diagram-image-title">Flow diagram</div>
+      <button class="diagram-zoom-btn" onclick="cycleDiagramZoom()" title="Click to zoom in, cycles back to 100% after 3 steps">
+        <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke-width="1.8"/><path d="M11 8v6M8 11h6M21 21l-4.3-4.3" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span id="diagram-zoom-pct">100%</span>
+      </button>
+    </div>
+    <div class="diagram-image-viewport">
+      <div id="diagram-image-svg"></div>
+    </div>
   </div>
 </div>
+
+<!-- THEME TOGGLE -->
+<button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle dark mode">
+  <span id="theme-toggle-icon">&#127769;</span>
+</button>
 
 <!-- API ACTIVITY DRAWER -->
 <button class="api-log-toggle" id="api-log-toggle" onclick="toggleApiLog()" title="API Log">
@@ -1386,17 +1507,23 @@ body.phone-widget-active #lean-sdk-iframe {
 
             <div class="m-section-label">Pay by Bank</div>
             <div class="m-method-card recommended" id="mobile-of-card" onclick="mobileHandleOfPrimary()" role="button" tabindex="0">
-              <div class="m-method-icon">&#127974;</div>
-              <div class="m-method-info">
-                <div class="m-method-name">Account on File</div>
-                <div class="m-recommended-tag">Recommended</div>
-                <div class="m-method-sub">Free service charges</div>
+              <div class="m-method-icon" style="color:var(--emerald-dark);">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M3 10l9-6 9 6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9M10 10v9M14 10v9M19 10v9" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke-width="1.8" stroke-linecap="round"/></svg>
               </div>
-              <span class="m-method-badge" id="mobile-of-badge">Not connected</span>
+              <div class="m-method-info">
+                <div class="m-method-name-row">
+                  <span class="m-method-name" id="mobile-of-name">Connect Bank</span>
+                  <span class="m-recommended-tag">Recommended</span>
+                </div>
+                <div class="m-method-sub" id="mobile-of-sub">Connect once and pay with one tap</div>
+              </div>
+              <span class="m-method-badge" id="mobile-of-badge" style="display:none;">Connected</span>
             </div>
 
             <div class="m-method-card" id="mobile-sip-card" onclick="mobileSipTopUp()" role="button" tabindex="0">
-              <div class="m-method-icon">&#9889;</div>
+              <div class="m-method-icon" style="color:var(--text-2);">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke-width="1.8" stroke-linejoin="round"/></svg>
+              </div>
               <div class="m-method-info">
                 <div class="m-method-name">Single Instant Payment</div>
                 <div class="m-method-sub" id="mobile-sip-sub">Requires authorization</div>
@@ -1434,7 +1561,7 @@ body.phone-widget-active #lean-sdk-iframe {
               <input type="number" id="mobile-withdraw-amount" placeholder="0.00" min="1" step="any" />
             </div>
 
-            <button class="btn btn-danger" id="mobile-btn-withdraw" onclick="mobileWithdraw()">Withdraw to bank</button>
+            <button class="btn btn-primary" id="mobile-btn-withdraw" onclick="mobileWithdraw()">Withdraw to bank</button>
             <p class="status-msg" id="mobile-status-withdraw"></p>
           </div>
 
@@ -1469,10 +1596,10 @@ body.phone-widget-active #lean-sdk-iframe {
       </div>
 
       <div class="phone-bottom-nav">
-        <button class="mtab-btn active" id="mtab-PORTFOLIO" onclick="switchMobileTab('PORTFOLIO')"><span class="mtab-icon">&#128202;</span>Portfolio</button>
+        <button class="mtab-btn active" id="mtab-PORTFOLIO" onclick="switchMobileTab('PORTFOLIO')"><span class="mtab-icon">&#128200;</span>Portfolio</button>
         <button class="mtab-btn" id="mtab-DEPOSITS" onclick="switchMobileTab('DEPOSITS')"><span class="mtab-icon">&#8595;</span>Deposits</button>
         <button class="mtab-btn" id="mtab-WITHDRAW" onclick="switchMobileTab('WITHDRAW')"><span class="mtab-icon">&#8593;</span>Withdraw</button>
-        <button class="mtab-btn" id="mtab-PROFILE" onclick="switchMobileTab('PROFILE')"><span class="mtab-icon">&#128100;</span>Profile</button>
+        <button class="mtab-btn" id="mtab-PROFILE" onclick="switchMobileTab('PROFILE')"><span class="mtab-icon">&#129489;</span>Profile</button>
       </div>
     </div>
   </div>
@@ -1541,6 +1668,23 @@ let apiLogSeq = apiLog.reduce((max, e) => Math.max(max, e.id || 0), 0);
 // this is a standing dev preference, not per-tab-session state like apiLog
 // itself) so the drawer stays open across reloads instead of snapping shut
 // every time you refresh while watching calls happen live.
+const THEME_KEY = "ts_theme_v1";
+function currentTheme() {
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+}
+function applyThemeIcon() {
+  const icon = document.getElementById("theme-toggle-icon");
+  if (icon) icon.innerHTML = currentTheme() === "dark" ? "&#9728;&#65039;" : "&#127769;";
+}
+function toggleTheme() {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  if (next === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  else document.documentElement.removeAttribute("data-theme");
+  try { localStorage.setItem(THEME_KEY, next); } catch {}
+  applyThemeIcon();
+}
+applyThemeIcon(); // sync the button's icon with whatever the <head> script already applied
+
 const API_LOG_OPEN_KEY = "ts_api_log_open_v1";
 function loadApiLogOpenPref() {
   try { return localStorage.getItem(API_LOG_OPEN_KEY) === "true"; } catch { return false; }
@@ -3024,6 +3168,28 @@ async function handleDepositOF(amount, reference) {
 
 
 // OF-SIP deposit — no linking required at all, redirect per payment
+// Consent management for SIP — unlike AoF there's no standing payment
+// consent to view/revoke here (every SIP checkout is a fresh one-off), but
+// Lean still tracks a payment-history consent per customer that this lets
+// them view/manage. Filtered via consent_type so the widget only shows
+// that consent type instead of every consent this customer has.
+function sipManageConsents() {
+  if (!customerId) { setStatus("sip-consent", "Still initialising — please wait a moment.", "error"); return; }
+
+  callLeanSdk("Lean.manageConsents() — SIP payment history", Lean.manageConsents.bind(Lean), {
+    app_token:     APP_TOKEN,
+    customer_id:   customerId,
+    access_token:  accessToken,
+    consent_type:  "payment_history",
+    sandbox:       true,
+
+    callback: (payload) => {
+      console.log("[Lean.manageConsents — SIP] Callback payload:", payload);
+      setStatus("sip-consent", "");
+    },
+  });
+}
+
 function setSipStandaloneAmount(v) {
   document.getElementById("sip-standalone-amount").value = v;
 }
@@ -3460,9 +3626,9 @@ function renderCompactFlowSvg(steps) {
     if (step.type === "banner") {
       const lines = wrapPlainText(step.text, bannerCharsPerLine);
       const h = 14 + lines.length * lineH;
-      body += `<rect x="0" y="${y}" width="${W}" height="${h}" rx="6" fill="#FEF6DC" stroke="#F0DFA0" />`;
+      body += `<rect x="0" y="${y}" width="${W}" height="${h}" rx="6" style="fill:var(--diagram-banner-bg);stroke:var(--diagram-banner-border)" />`;
       lines.forEach((line, i) => {
-        body += `<text x="${W / 2}" y="${y + 17 + i * lineH}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7C5E10">${escapeSvgText(line)}</text>`;
+        body += `<text x="${W / 2}" y="${y + 17 + i * lineH}" text-anchor="middle" font-size="12.5" font-weight="700" style="fill:var(--diagram-banner-text)">${escapeSvgText(line)}</text>`;
       });
       y += h + 8;
     } else {
@@ -3471,18 +3637,18 @@ function renderCompactFlowSvg(steps) {
       const dir = step.type === "return" ? "←" : "→";
       const tag = `${DIAGRAM_ACTORS_SHORT[step.from]} ${dir} ${DIAGRAM_ACTORS_SHORT[step.to]}`;
       const lines = wrapPlainText(step.label, labelCharsPerLine);
-      body += `<circle cx="${laneX}" cy="${y + 11}" r="11" fill="#1F2937" />`;
+      body += `<circle cx="${laneX}" cy="${y + 11}" r="11" style="fill:var(--diagram-line)" />`;
       body += `<text x="${laneX}" y="${y + 15.5}" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">${stepNum}</text>`;
-      body += `<text x="${textX}" y="${y + 6}" font-size="12" font-weight="700" fill="${step.type === "return" ? "#7C3AED" : "#1D4ED8"}">${escapeSvgText(tag)}</text>`;
+      body += `<text x="${textX}" y="${y + 6}" font-size="12" font-weight="700" style="fill:var(${step.type === "return" ? "--diagram-arrow-return" : "--diagram-arrow-forward"})">${escapeSvgText(tag)}</text>`;
       lines.forEach((line, i) => {
-        body += `<text x="${textX}" y="${y + 26 + i * lineH}" font-size="13" fill="#374151">${escapeSvgText(line)}</text>`;
+        body += `<text x="${textX}" y="${y + 26 + i * lineH}" font-size="13" style="fill:var(--diagram-label-text)">${escapeSvgText(line)}</text>`;
       });
       y += 24 + lines.length * lineH + 8;
     }
   });
 
   const lane = nodeYs.length > 1
-    ? `<line x1="${laneX}" y1="${nodeYs[0]}" x2="${laneX}" y2="${nodeYs[nodeYs.length - 1]}" stroke="#D1D5DB" stroke-width="2.5" />`
+    ? `<line x1="${laneX}" y1="${nodeYs[0]}" x2="${laneX}" y2="${nodeYs[nodeYs.length - 1]}" style="stroke:var(--diagram-lifeline)" stroke-width="2.5" />`
     : "";
 
   return `
@@ -3516,8 +3682,8 @@ function renderWideFlowSvg(steps) {
   steps.forEach((step) => {
     if (step.type === "banner") {
       body += `
-        <rect x="14" y="${y - 24}" width="${W - 28}" height="32" rx="5" fill="#FEF6DC" stroke="#F0DFA0" />
-        <text x="${W / 2}" y="${y - 3}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7C5E10">${escapeSvgText(step.text)}</text>
+        <rect x="14" y="${y - 24}" width="${W - 28}" height="32" rx="5" style="fill:var(--diagram-banner-bg);stroke:var(--diagram-banner-border)" />
+        <text x="${W / 2}" y="${y - 3}" text-anchor="middle" font-size="12.5" font-weight="700" style="fill:var(--diagram-banner-text)">${escapeSvgText(step.text)}</text>
       `;
     } else {
       stepNum++;
@@ -3526,10 +3692,10 @@ function renderWideFlowSvg(steps) {
       const midX = (x1 + x2) / 2;
       const marker = step.type === "return" ? "wide-arrow-dash" : "wide-arrow-solid";
       body += `
-        <text x="${midX}" y="${y - 12}" text-anchor="middle" font-size="11" fill="#374151">${escapeSvgText(step.label)}</text>
-        <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#1F2937" stroke-width="1.3"
+        <text x="${midX}" y="${y - 12}" text-anchor="middle" font-size="11" style="fill:var(--diagram-label-text)">${escapeSvgText(step.label)}</text>
+        <line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" style="stroke:var(--diagram-line)" stroke-width="1.3"
               ${step.type === "return" ? 'stroke-dasharray="5,4"' : ""} marker-end="url(#${marker})" />
-        <circle cx="${x1}" cy="${y}" r="8.5" fill="#1F2937" />
+        <circle cx="${x1}" cy="${y}" r="8.5" style="fill:var(--diagram-line)" />
         <text x="${x1}" y="${y + 3}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff">${stepNum}</text>
       `;
     }
@@ -3538,21 +3704,21 @@ function renderWideFlowSvg(steps) {
 
   const lifelines = X.map((x) => `
     <line x1="${x}" y1="${topPad - 30}" x2="${x}" y2="${height - topPad + 30}"
-          stroke="#D1D5DB" stroke-width="1.2" stroke-dasharray="3,3" />
+          style="stroke:var(--diagram-lifeline)" stroke-width="1.2" stroke-dasharray="3,3" />
   `).join("");
 
   const actorBoxes = X.map((x, i) => `
-    <rect x="${x - 74}" y="12" width="148" height="36" rx="6" fill="#EDE9FE" stroke="#C4B5FD" />
-    <text x="${x}" y="34.5" text-anchor="middle" font-size="11.5" font-weight="600" fill="#4C1D95">${WIDE_DIAGRAM_ACTORS[i]}</text>
-    <rect x="${x - 74}" y="${height - 48}" width="148" height="36" rx="6" fill="#EDE9FE" stroke="#C4B5FD" />
-    <text x="${x}" y="${height - 25.5}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#4C1D95">${WIDE_DIAGRAM_ACTORS[i]}</text>
+    <rect x="${x - 74}" y="12" width="148" height="36" rx="6" style="fill:var(--diagram-actor-bg);stroke:var(--diagram-actor-border)" />
+    <text x="${x}" y="34.5" text-anchor="middle" font-size="11.5" font-weight="600" style="fill:var(--diagram-actor-text)">${WIDE_DIAGRAM_ACTORS[i]}</text>
+    <rect x="${x - 74}" y="${height - 48}" width="148" height="36" rx="6" style="fill:var(--diagram-actor-bg);stroke:var(--diagram-actor-border)" />
+    <text x="${x}" y="${height - 25.5}" text-anchor="middle" font-size="11.5" font-weight="600" style="fill:var(--diagram-actor-text)">${WIDE_DIAGRAM_ACTORS[i]}</text>
   `).join("");
 
   return `
     <svg viewBox="0 0 ${W} ${height}" xmlns="http://www.w3.org/2000/svg" style="display:block; margin:0 auto; width:auto; height:auto; max-width:100%; max-height:78vh;">
       <defs>
-        <marker id="wide-arrow-solid" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1F2937" /></marker>
-        <marker id="wide-arrow-dash" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1F2937" /></marker>
+        <marker id="wide-arrow-solid" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" style="fill:var(--diagram-line)" /></marker>
+        <marker id="wide-arrow-dash" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" style="fill:var(--diagram-line)" /></marker>
       </defs>
       ${lifelines}
       ${body}
@@ -3801,12 +3967,91 @@ function openDiagramImageModal(demo) {
     body.innerHTML = `${cfg._wideSvg}
       <div class="diagram-image-source-note">Lean's docs don't have a diagram for this one — built to match their style, from the same flow shown on the page.</div>`;
   }
+  resetDiagramZoom();
   document.getElementById("diagram-image-overlay").classList.add("open");
 }
 
 function closeDiagramImageModal() {
   document.getElementById("diagram-image-overlay").classList.remove("open");
 }
+
+// Zoom is one continuous value (not a fixed-step array) since it now has
+// three input sources that all need to agree: click-anywhere and the toolbar
+// button move it by a fixed step and wrap back to 100% past the max, while
+// the wheel adjusts it continuously — all three call setDiagramZoom() with
+// an anchor point so whatever's under that point stays put as the scale
+// changes, instead of the view jumping.
+const DIAGRAM_ZOOM_MIN = 1, DIAGRAM_ZOOM_MAX = 2.5, DIAGRAM_ZOOM_STEP = 0.5;
+let diagramZoom = 1;
+function setDiagramZoom(next, anchorX, anchorY) {
+  const viewport = document.querySelector(".diagram-image-viewport");
+  const clamped = Math.round(Math.min(DIAGRAM_ZOOM_MAX, Math.max(DIAGRAM_ZOOM_MIN, next)) * 100) / 100;
+  const prevZoom = diagramZoom;
+  diagramZoom = clamped;
+  document.getElementById("diagram-image-svg").style.transform = `scale(${diagramZoom})`;
+  document.getElementById("diagram-zoom-pct").textContent = Math.round(diagramZoom * 100) + "%";
+  viewport.classList.toggle("zoomable", diagramZoom > 1);
+  if (diagramZoom === 1) {
+    viewport.scrollLeft = 0; viewport.scrollTop = 0;
+  } else if (anchorX != null) {
+    // Keep the content point under (anchorX, anchorY) fixed on screen —
+    // without this, zooming in always grows away from the top-left corner
+    // regardless of where you actually clicked/scrolled.
+    const contentX = (viewport.scrollLeft + anchorX) / prevZoom;
+    const contentY = (viewport.scrollTop + anchorY) / prevZoom;
+    viewport.scrollLeft = contentX * diagramZoom - anchorX;
+    viewport.scrollTop = contentY * diagramZoom - anchorY;
+  }
+}
+function cycleDiagramZoom() {
+  const viewport = document.querySelector(".diagram-image-viewport");
+  const next = diagramZoom + DIAGRAM_ZOOM_STEP > DIAGRAM_ZOOM_MAX + 0.01 ? DIAGRAM_ZOOM_MIN : diagramZoom + DIAGRAM_ZOOM_STEP;
+  setDiagramZoom(next, viewport.clientWidth / 2, viewport.clientHeight / 2);
+}
+function resetDiagramZoom() {
+  setDiagramZoom(1, null, null);
+}
+
+// Click anywhere in the diagram to zoom in (cycling back to 100% past the
+// max, same as the toolbar button) — but only on a plain click. A drag past
+// a small pixel threshold pans instead, so panning while zoomed in doesn't
+// also trigger a zoom step on release. Wheel/trackpad scroll zooms
+// continuously, anchored at the cursor, forward = in and back = out.
+function initDiagramInteractions() {
+  const viewport = document.querySelector(".diagram-image-viewport");
+  if (!viewport) return;
+  const CLICK_THRESHOLD = 6;
+  let down = false, moved = false, startX = 0, startY = 0, startScrollLeft = 0, startScrollTop = 0;
+
+  viewport.addEventListener("mousedown", (e) => {
+    down = true; moved = false;
+    startX = e.pageX; startY = e.pageY;
+    startScrollLeft = viewport.scrollLeft; startScrollTop = viewport.scrollTop;
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!down) return;
+    const dx = e.pageX - startX, dy = e.pageY - startY;
+    if (!moved && Math.hypot(dx, dy) > CLICK_THRESHOLD) { moved = true; viewport.classList.add("dragging"); }
+    if (moved) { viewport.scrollLeft = startScrollLeft - dx; viewport.scrollTop = startScrollTop - dy; }
+  });
+  window.addEventListener("mouseup", (e) => {
+    if (down && !moved) {
+      const rect = viewport.getBoundingClientRect();
+      const next = diagramZoom + DIAGRAM_ZOOM_STEP > DIAGRAM_ZOOM_MAX + 0.01 ? DIAGRAM_ZOOM_MIN : diagramZoom + DIAGRAM_ZOOM_STEP;
+      setDiagramZoom(next, e.clientX - rect.left, e.clientY - rect.top);
+    }
+    down = false; moved = false;
+    viewport.classList.remove("dragging");
+  });
+
+  viewport.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+    setDiagramZoom(diagramZoom - Math.sign(e.deltaY) * 0.1, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+}
+initDiagramInteractions();
 
 const DEPOSIT_TABS = {
   CP:  { amountInput: "cp-deposit-amount",  referenceInput: "cp-reference",  btn: "btn-cp-deposit",  statusKey: "cp" },
@@ -5136,11 +5381,11 @@ const MOBILE_TAB_TITLES = { PORTFOLIO: "Portfolio", DEPOSITS: "Deposits", WITHDR
 // This demo has no live holdings API — mock global blue-chip names with
 // shares actually open for trading, rather than local bank/property stocks.
 const MOCK_HOLDINGS = [
-  { sym: "AAPL", name: "Apple Inc.",       qty: 15, price: 845.20,  chg: "+0.64%", up: true  },
-  { sym: "TSLA", name: "Tesla Inc.",       qty: 8,  price: 918.40,  chg: "-1.12%", up: false },
-  { sym: "AMZN", name: "Amazon.com Inc.",  qty: 20, price: 682.75,  chg: "+0.91%", up: true  },
-  { sym: "MSFT", name: "Microsoft Corp.",  qty: 6,  price: 1543.60, chg: "+0.37%", up: true  },
-  { sym: "NVDA", name: "NVIDIA Corp.",     qty: 25, price: 496.10,  chg: "+2.05%", up: true  },
+  { sym: "AAPL", name: "Apple Inc.",       qty: 15, price: 845.20,  chg: "+0.64%", up: true,  domain: "apple.com" },
+  { sym: "TSLA", name: "Tesla Inc.",       qty: 8,  price: 918.40,  chg: "-1.12%", up: false, domain: "tesla.com" },
+  { sym: "AMZN", name: "Amazon.com Inc.",  qty: 20, price: 682.75,  chg: "+0.91%", up: true,  domain: "amazon.com" },
+  { sym: "MSFT", name: "Microsoft Corp.",  qty: 6,  price: 1543.60, chg: "+0.37%", up: true,  domain: "microsoft.com" },
+  { sym: "NVDA", name: "NVIDIA Corp.",     qty: 25, price: 496.10,  chg: "+2.05%", up: true,  domain: "nvidia.com" },
 ];
 
 // The Lean SDK loader injects a single #lean-sdk-iframe straight onto
@@ -5203,7 +5448,10 @@ function renderMobilePortfolio() {
   document.getElementById("mobile-portfolio-balance").textContent = fmt(tradingBalance);
   document.getElementById("mobile-holdings-list").innerHTML = MOCK_HOLDINGS.map((h) => `
     <div class="holding-row">
-      <div class="holding-sym">${h.sym.slice(0, 4)}</div>
+      <div class="holding-sym">
+        <img src="https://www.google.com/s2/favicons?sz=64&domain=${h.domain}" alt="${h.sym}"
+             onerror="this.remove(); this.parentElement.textContent='${h.sym.slice(0, 4)}';" />
+      </div>
       <div class="holding-info">
         <div class="holding-name">${h.name}</div>
         <div class="holding-qty">${h.qty} shares</div>
@@ -5222,15 +5470,23 @@ function renderMobilePortfolio() {
 function renderMobileDeposits() {
   const badge   = document.getElementById("mobile-of-badge");
   const sipCard = document.getElementById("mobile-sip-card");
+  const nameEl  = document.getElementById("mobile-of-name");
+  const subEl   = document.getElementById("mobile-of-sub");
   if (consentStatus === "AUTHORISED") {
     badge.textContent = "Connected";
     badge.className = "m-method-badge linked";
+    badge.style.display = "";
+    nameEl.textContent = "One Tap payments";
+    subEl.textContent = "Free service charges";
     // Once the user has connected & consented, Pay by Bank is the only
     // deposit path shown — SIP was just the first-time, no-consent option.
     sipCard.style.display = "none";
   } else {
-    badge.textContent = "Not connected";
-    badge.className = "m-method-badge";
+    // No badge before connecting — "Not connected" was just noise; the
+    // card's own "Connect Bank" label already says what it does.
+    badge.style.display = "none";
+    nameEl.textContent = "Connect Bank";
+    subEl.textContent = "Connect once and pay with one tap";
     sipCard.style.display = "flex";
   }
 }
@@ -5244,6 +5500,7 @@ function setMobileOfCardLoading(loading, badgeText) {
   const badge = document.getElementById("mobile-of-badge");
   if (loading) {
     card.classList.add("loading");
+    badge.style.display = "";
     badge.textContent = badgeText;
   } else {
     card.classList.remove("loading");
