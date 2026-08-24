@@ -1361,7 +1361,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.4
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.5
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2235,6 +2235,33 @@ function switchPage(page) {
   if (page === "LINKS")    { loadPaymentLinks(); renderFlowDiagram("LINKS"); }
 }
 
+// authorizeConsent() is called with success/fail redirect URLs (see
+// startLinkOF()/mobileConnectOF()/sipAofConnectOF()) exactly like SIP's
+// checkout() is — but unlike every SIP redirect-return path, none of the
+// three AoF surfaces ever called captureRedirect() on the way back, leaving
+// the SDK's own internal state mid-flow after a real page reload. One
+// shared helper (rather than tripling the ~15-line block SIP already
+// repeats three times) closes that out consistently everywhere.
+async function captureOfRedirect(redirectParams = {}, label = "AoF") {
+  try {
+    const captureFn = (window.LeanV2?.captureRedirect || window.Lean?.captureRedirect)?.bind(window.LeanV2 || window.Lean);
+    if (!captureFn) return;
+    callLeanSdk(`captureRedirect() — ${label} redirect return`, captureFn, {
+      app_token:              APP_TOKEN,
+      customer_id:            customerId,
+      access_token:           accessToken,
+      sandbox:                true,
+      bank_identifier:        redirectParams.bankIdentifier ?? undefined,
+      consent_attempt_id:     redirectParams.consentAttemptId ?? undefined,
+      granular_status_code:   redirectParams.granularStatusCode ?? undefined,
+      status_additional_info: redirectParams.statusAdditionalInfo ?? undefined,
+      callback: (payload) => { console.log(`[captureRedirect — ${label}] Callback:`, payload); },
+    });
+  } catch (e) {
+    console.warn(`[${label}] captureRedirect error:`, e);
+  }
+}
+
 // ─── INIT ───────────────────────────────────────────────────────────────────
 async function init() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -2314,6 +2341,8 @@ async function init() {
       if (isMobileRedirect) {
         openMobileApp();
         switchMobileTab("DEPOSITS");
+        applyMobileSdkScope();
+        await captureOfRedirect(sipRedirectParams, "mobile AoF");
         if (consentStatus === "AUTHORISED") {
           mobileConnectSuccess();
           return;
@@ -2326,6 +2355,7 @@ async function init() {
       if (isSipAofRedirect) {
         switchPage("INTEGRATIONS");
         openIntegrationDemo("SIPAOF");
+        await captureOfRedirect(sipRedirectParams, "SIP+AoF");
         if (consentStatus === "AUTHORISED") {
           await completeSipAofAutoPayment();
           return;
@@ -2337,6 +2367,7 @@ async function init() {
       }
       // Returning from AlTareq after the AoF tab's "Link via OF" step.
       switchPage("AOF");
+      await captureOfRedirect(sipRedirectParams, "AoF");
       // The /api/init response above is a direct, non-broadcast read of the
       // server's current state — if the webhook already landed while the
       // browser was still mid-redirect back to us (a real, common race),
@@ -2354,20 +2385,28 @@ async function init() {
       return;
     }
     if (ofStatus === "FAILED") {
+      // Same reasoning as the SIP FAILED branch below: a failed redirect
+      // still needs captureRedirect() so the SDK gets a proper close-out
+      // signal instead of being left mid-flow — this was missing for every
+      // AoF surface (standalone/mobile/SIP+AoF) even though SIP always had it.
       if (isMobileRedirect) {
         openMobileApp();
         switchMobileTab("DEPOSITS");
+        applyMobileSdkScope();
+        await captureOfRedirect(sipRedirectParams, "mobile AoF");
         setStatusEl("mobile-status-deposit", "Bank authorization failed or was cancelled. Try again.", "error");
         return;
       }
       if (isSipAofRedirect) {
         switchPage("INTEGRATIONS");
         openIntegrationDemo("SIPAOF");
+        await captureOfRedirect(sipRedirectParams, "SIP+AoF");
         sessionStorage.removeItem("sipaof_pending_amount");
         setStatus("sipaof", "Bank authorization failed or was cancelled. Try again.", "error");
         return;
       }
       switchPage("AOF");
+      await captureOfRedirect(sipRedirectParams, "AoF");
       setStatusEl("status-aof-link", "Bank authorization failed or was cancelled. Try again.", "error");
       return;
     }
@@ -3739,6 +3778,7 @@ const INTEGRATION_DIAGRAMS = {
       { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
       { type: "banner", text: "2) Lean confirms the new entity + payment source" },
       { type: "return", from: 4, to: 3, label: "Webhook: entity.created" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment_source.beneficiary.created (status: cool-off or active)" },
       { type: "banner", text: "3) Create a payment intent for the deposit" },
       { type: "call",   from: 3, to: 4, label: "POST /payments/v1/intents" },
       { type: "return", from: 4, to: 3, label: "201 Created (payment_intent_id)" },
@@ -3760,12 +3800,16 @@ const INTEGRATION_DIAGRAMS = {
       { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
       { type: "banner", text: "2) Lean confirms the new (data-only) entity" },
       { type: "return", from: 4, to: 3, label: "Webhook: entity.created" },
-      { type: "banner", text: "3) Read the connected accounts + balances" },
-      { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts + /balances" },
-      { type: "return", from: 4, to: 3, label: "200 OK (accounts[], balances[])" },
-      { type: "banner", text: "4) Read identity + recent transactions" },
-      { type: "call",   from: 3, to: 4, label: "GET /data/v2/identity + /transactions" },
-      { type: "return", from: 4, to: 3, label: "200 OK (identity, transactions[])" },
+      { type: "banner", text: "3) Read the connected accounts, then each one's balance" },
+      { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts?entity_id=..." },
+      { type: "return", from: 4, to: 3, label: "200 OK (accounts[])" },
+      { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts/{account_id}/balances" },
+      { type: "return", from: 4, to: 3, label: "200 OK (balances[]) — per account" },
+      { type: "banner", text: "4) Read identity + each account's recent transactions" },
+      { type: "call",   from: 3, to: 4, label: "GET /data/v2/identity?entity_id=..." },
+      { type: "return", from: 4, to: 3, label: "200 OK (identities[])" },
+      { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts/{account_id}/transactions" },
+      { type: "return", from: 4, to: 3, label: "200 OK (transactions[]) — per account" },
       { type: "return", from: 3, to: 1, label: "Return accounts, identity, transactions" },
     ],
   },
@@ -3774,22 +3818,24 @@ const INTEGRATION_DIAGRAMS = {
     steps: [
       { type: "banner", text: "1) Create an Account-on-File consent" },
       { type: "call",   from: 1, to: 3, label: "POST /api/of/create-consent" },
-      { type: "call",   from: 3, to: 4, label: "POST /consents/v1" },
+      { type: "call",   from: 3, to: 4, label: "POST /consents/v1/account-on-file" },
       { type: "return", from: 4, to: 3, label: "201 Created (consent_id)" },
       { type: "return", from: 3, to: 1, label: "Return consent_id" },
       { type: "banner", text: "2) Launch LinkSDK to authorise the consent" },
       { type: "call",   from: 1, to: 2, label: "authorizeConsent(consent_id)" },
       { type: "return", from: 2, to: 0, label: "Redirect to the bank's own portal" },
       { type: "banner", text: "Customer authorises the standing consent at their bank" },
-      { type: "banner", text: "3) Capture the redirect back to your app" },
+      { type: "banner", text: "3) Capture the redirect, then the SDK's own callback reports the result" },
       { type: "call",   from: 1, to: 2, label: "captureRedirect()" },
-      { type: "return", from: 2, to: 1, label: "Authorisation result (success / failure)" },
-      { type: "banner", text: "4) Lean confirms the consent is authorised" },
+      { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS / CANCELLED / FAILED)" },
+      { type: "banner", text: "4) Your app polls while Lean confirms the consent is authorised" },
       { type: "return", from: 4, to: 3, label: "Webhook: consent.status.updated (AUTHORISED)" },
+      { type: "call",   from: 1, to: 3, label: "Poll GET /api/status until consentStatus: AUTHORISED" },
       { type: "banner", text: "5) Deposit any time — no SDK, no re-authorisation" },
       { type: "call",   from: 1, to: 3, label: "POST /api/of/pay" },
       { type: "call",   from: 3, to: 4, label: "POST /payments/v1/account-on-file" },
-      { type: "return", from: 4, to: 3, label: "200 OK + Webhook: payment.updated" },
+      { type: "return", from: 4, to: 3, label: "201 Created + Webhook: payment.created" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.account-on-file.updated (PROCESSED)" },
     ],
   },
   SIP: {
@@ -3818,14 +3864,18 @@ const INTEGRATION_DIAGRAMS = {
       { type: "banner", text: "1) Offer both funding rails from one amount" },
       { type: "banner", text: "Path A — customer picks \"Link & pay via AoF\" (recommended)" },
       { type: "call",   from: 1, to: 3, label: "POST /api/of/create-consent" },
+      { type: "call",   from: 3, to: 4, label: "POST /consents/v1/account-on-file" },
+      { type: "return", from: 4, to: 3, label: "201 Created (consent_id)" },
       { type: "call",   from: 1, to: 2, label: "authorizeConsent(consent_id)" },
       { type: "return", from: 2, to: 0, label: "Redirect to the bank's own portal" },
+      { type: "call",   from: 1, to: 2, label: "captureRedirect()" },
       { type: "return", from: 4, to: 3, label: "Webhook: consent.status.updated (AUTHORISED)" },
       { type: "call",   from: 1, to: 3, label: "POST /api/of/pay — same amount, auto-triggered" },
       { type: "banner", text: "Path B — customer picks \"Pay via SIP\" (one-off)" },
       { type: "call",   from: 3, to: 4, label: "POST /payments/v1/intents" },
       { type: "call",   from: 1, to: 2, label: "checkout(payment_intent_id)" },
       { type: "return", from: 2, to: 0, label: "Redirect to the bank to authorise this one payment" },
+      { type: "call",   from: 1, to: 2, label: "captureRedirect()" },
       { type: "banner", text: "Either path ends the same way" },
       { type: "return", from: 4, to: 3, label: "Webhook confirms the payment — trading balance updated" },
     ],
@@ -3850,6 +3900,7 @@ const INTEGRATION_DIAGRAMS = {
       { type: "call",   from: 1, to: 3, label: "POST /api/payout" },
       { type: "call",   from: 3, to: 4, label: "POST /payouts/v1/payment" },
       { type: "return", from: 4, to: 3, label: "201 Created (payout id, status: PENDING)" },
+      { type: "return", from: 4, to: 3, label: "Webhook: payment.created" },
       { type: "banner", text: "2) Requires manual authorisation in the Lean Dashboard" },
       { type: "banner", text: "Ops team reviews and authorises the payout in Lean's dashboard" },
       { type: "return", from: 4, to: 3, label: "Webhook: payment.updated (ACCEPTED_BY_BANK)" },
