@@ -392,7 +392,7 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
 .recon-empty-icon { font-size:32px; margin-bottom:10px; }
 .recon-table { width:100%; border-collapse:collapse; font-size:13px; }
 .recon-table th { text-align:left; font-size:11px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:var(--text-3); padding:0 0 10px; border-bottom:1px solid var(--border); }
-.recon-table td { padding:10px 0; border-bottom:1px solid var(--border); vertical-align:middle; }
+.recon-table td { padding:10px 0; border-bottom:1px solid var(--border); vertical-align:middle; color:var(--text); }
 .recon-table tr:last-child td { border-bottom:none; }
 .recon-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:99px; font-size:11px; font-weight:700; white-space:nowrap; }
 .recon-badge.RECONCILED  { background:#ECFDF5; color:#065F46; }
@@ -1361,7 +1361,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.5
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.6
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2651,18 +2651,42 @@ async function startLinkDataOnly() {
   });
 }
 
+// entity.created (which just sets dataOnlyEntityId) only means the entity
+// exists — Lean is explicit that clients shouldn't read /data/v2/* until a
+// SEPARATE webhook, entity.data.refresh.updated, reaches status: FINISHED
+// (it fires PENDING repeatedly first, while the data store is still being
+// populated). This used to render the moment dataOnlyEntityId appeared,
+// which is why the card could show "webhook took too long" and then have
+// data ready seconds later on a manual refresh — it was waiting on the
+// wrong signal. Waits for BOTH now, and gives the slower data-refresh leg
+// more time than a plain entity lookup needs.
 function pollForDataOnlyEntity() {
   waitForStatus(
     (data) => !!data.dataOnlyEntityId,
     (data) => {
       dataOnlyEntityId = data.dataOnlyEntityId;
-      setStatusEl("status-do-link", "");
-      renderDataOnlyCard();
+      setStatusEl("status-do-link", "Bank linked! Fetching your account data…", "ok");
+      pollForDataOnlyRefresh();
     },
     () => {
       setStatusEl("status-do-link", "Webhook took too long — try refreshing the page.", "error");
       setLoading("btn-link-do", false, "Connect for data");
     },
+  );
+}
+
+function pollForDataOnlyRefresh() {
+  waitForStatus(
+    (data) => data.dataOnlyRefreshStatus === "FINISHED",
+    () => {
+      setStatusEl("status-do-link", "");
+      renderDataOnlyCard();
+    },
+    () => {
+      setStatusEl("status-do-link", "Still fetching your data — try refreshing the page in a moment.", "error");
+      setLoading("btn-link-do", false, "Connect for data");
+    },
+    60000,
   );
 }
 
@@ -3798,14 +3822,17 @@ const INTEGRATION_DIAGRAMS = {
       { type: "return", from: 2, to: 0, label: "Show bank selection" },
       { type: "banner", text: "Customer logs in to their bank inside the widget" },
       { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
-      { type: "banner", text: "2) Lean confirms the new (data-only) entity" },
+      { type: "banner", text: "2) Lean confirms the new (data-only) entity — but the data isn't ready yet" },
       { type: "return", from: 4, to: 3, label: "Webhook: entity.created" },
-      { type: "banner", text: "3) Read the connected accounts, then each one's balance" },
+      { type: "banner", text: "3) Wait for the data store to actually finish populating" },
+      { type: "return", from: 4, to: 3, label: "Webhook: entity.data.refresh.updated (status: PENDING)" },
+      { type: "return", from: 4, to: 3, label: "Webhook: entity.data.refresh.updated (status: FINISHED)" },
+      { type: "banner", text: "4) Only now read the connected accounts, then each one's balance" },
       { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts?entity_id=..." },
       { type: "return", from: 4, to: 3, label: "200 OK (accounts[])" },
       { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts/{account_id}/balances" },
       { type: "return", from: 4, to: 3, label: "200 OK (balances[]) — per account" },
-      { type: "banner", text: "4) Read identity + each account's recent transactions" },
+      { type: "banner", text: "5) Read identity + each account's recent transactions" },
       { type: "call",   from: 3, to: 4, label: "GET /data/v2/identity?entity_id=..." },
       { type: "return", from: 4, to: 3, label: "200 OK (identities[])" },
       { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts/{account_id}/transactions" },
@@ -3996,10 +4023,12 @@ const DOCS_URLS = {
 // verified to exist on each page before adding here. Not every product's
 // docs page has one (some only have UI screenshots, or a live-rendered
 // Mermaid diagram with no static image) — those fall back to our own
-// generated breakdown below instead of showing something wrong.
-const DOCS_DIAGRAM_IMAGE = {
-  DATAONLY: "https://files.readme.io/a5f32ea7fb690b877eab3839b410c9b336e30a876579d2af3c81c22845b7386d-image.png",
-};
+// generated breakdown below instead of showing something wrong. DATAONLY's
+// only available image is a generic Client/Lean infrastructure architecture
+// diagram, not an actual sequence for the accounts/identity/transactions
+// flow this page walks through — our own generated one is more specific and
+// accurate, so it's preferred here instead of Lean's image for once.
+const DOCS_DIAGRAM_IMAGE = {};
 
 // "Open" — shows the flow diagram bigger, in a modal, for whichever page's
 // button was clicked. Prefers the real image from Lean's own docs page;

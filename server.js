@@ -94,7 +94,13 @@ function buildStatusPayload(user) {
     paymentSourceId:   user.paymentSourceId,
     beneficiaryStatus: user.beneficiaryStatus,
     // Data Only field — its own independent entity, never the same one as above
-    dataOnlyEntityId:  user.dataOnlyEntityId,
+    dataOnlyEntityId:      user.dataOnlyEntityId,
+    // entity.created only means the entity/consent exists — Lean is still
+    // populating the actual account/identity/transaction data behind it.
+    // entity.data.refresh.updated (PENDING → FINISHED) is the real signal
+    // that GET /data/v2/* will actually return something; see the webhook
+    // handler below and pollForDataOnlyEntity() on the frontend.
+    dataOnlyRefreshStatus: user.dataOnlyRefreshStatus || null,
     // OF fields
     consentId:         user.consentId,
     consentStatus:     user.consentStatus,
@@ -290,7 +296,7 @@ app.post("/api/init", async (req, res) => {
       }
 
       // Start with a blank slate
-      user = { customerId, entityId: null, dataOnlyEntityId: null, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
+      user = { customerId, entityId: null, dataOnlyEntityId: null, dataOnlyRefreshStatus: null, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
       store[appUserId] = user;
 
       // After a restart recovery, try to restore entityId and paymentSourceId
@@ -358,6 +364,7 @@ app.post("/api/init", async (req, res) => {
       accessToken:       customerToken,
       entityId:          user.entityId,
       dataOnlyEntityId:  user.dataOnlyEntityId,
+      dataOnlyRefreshStatus: user.dataOnlyRefreshStatus || null,
       paymentSourceId:   user.paymentSourceId,
       beneficiaryStatus: user.beneficiaryStatus,
       consentId:         user.consentId,
@@ -574,6 +581,30 @@ app.post("/webhooks/lean", (req, res) => {
           });
       } else {
         console.warn(`[Webhook] No user found for customer_id ${customer_id}`);
+      }
+    }
+
+    // entity.created only means the entity/consent object exists — Lean
+    // says explicitly that clients should NOT poll and should instead wait
+    // for this event's `status` to reach FINISHED before calling any
+    // /data/v2/* endpoint; it fires PENDING repeatedly while populating the
+    // data store, per-data-type, then a final FINISHED once everything the
+    // consent covers is actually queryable. Only Data Only's card currently
+    // reads bulk data (Connect & Pay never calls /data/v2/*), so this only
+    // needs to track dataOnlyEntityId, not the CP entity.
+    if (event.type === "entity.data.refresh.updated") {
+      const { customer_id, id: refreshEntityId, entity_id, status } = event.payload || {};
+      const targetEntityId = entity_id || refreshEntityId;
+      const entry = Object.entries(store).find(([, u]) => u.customerId === customer_id);
+      if (entry) {
+        const [foundAppUserId, user] = entry;
+        if (!targetEntityId || targetEntityId === user.dataOnlyEntityId) {
+          user.dataOnlyRefreshStatus = status;
+          touchedAppUserId = foundAppUserId;
+          console.log(`[Webhook] entity.data.refresh.updated for ${foundAppUserId} → ${status}`);
+        }
+      } else {
+        console.warn(`[Webhook] No user found for customer_id ${customer_id} (data refresh event)`);
       }
     }
 
