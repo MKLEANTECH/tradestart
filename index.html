@@ -266,13 +266,27 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
    own) — do NOT also nest one inside .input-wrap, or the borders double up. */
 .select-input { display:block; width:100%; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); font-size:14px; font-weight:500; color:var(--text); padding:11px 36px 11px 14px; font-family:inherit; transition:border-color 0.15s; margin-bottom:12px; cursor:pointer; appearance:none; -webkit-appearance:none; -moz-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394A3B8' stroke-width='1.8'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:14px; }
 .select-input:focus { outline:none; border-color:var(--emerald); }
-/* The closed box above is fully custom-styled (appearance:none), but the
-   OPEN dropdown list is rendered by the OS/browser chrome, not by us — this
-   is the one part of it Chrome/Firefox do actually let CSS reach, so
-   without it the popup falls back to plain white-on-black regardless of
-   theme, clashing hard in dark mode. Safari still ignores this; there's no
-   further reach into a native select's popup rendering from CSS alone. */
+/* A native <select>'s open dropdown is rendered by the OS/browser chrome,
+   not by us — background/color on <option> (kept below for the couple of
+   plain <select> elements still in the codebase) is the ONLY part of it
+   Chrome/Firefox let CSS reach; there's no way to touch its radius, shadow,
+   spacing or hover state at all, in any browser. .custom-select below is
+   the actual fix for that: the real <select> stays in the DOM (hidden) so
+   every existing onchange/.value/.selectedIndex read keeps working
+   untouched, but a fully custom-styled button + option list renders on top
+   of it, kept in sync via syncCustomSelect() whenever the underlying
+   <select>'s options change. */
 .select-input option { background:var(--surface); color:var(--text); }
+
+.custom-select { position:relative; }
+.custom-select-trigger { text-align:left; }
+.custom-select-panel { position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:50; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:0 12px 28px rgba(0,0,0,0.18); max-height:240px; overflow-y:auto; display:none; }
+.custom-select-panel.open { display:block; }
+.custom-select-option { padding:10px 14px; font-size:14px; color:var(--text); cursor:pointer; display:flex; align-items:center; gap:8px; transition:background-color 0.1s; }
+.custom-select-option:hover { background:var(--emerald-light); color:var(--emerald-dark); }
+.custom-select-option.selected { font-weight:600; }
+.custom-select-check { width:14px; flex-shrink:0; color:var(--emerald-dark); opacity:0; font-size:12px; }
+.custom-select-option.selected .custom-select-check { opacity:1; }
 
 /* Deliberately distinct from .text-field: a readonly, click-to-copy URL
    needs to fit more characters per line and reads better monospaced — but
@@ -1087,7 +1101,11 @@ body.phone-widget-active #lean-sdk-iframe {
     <div class="card-subtitle">Reverses a completed RE, SIP or AoF deposit back to the same bank account it came from &mdash; Lean looks up the payer, you never enter an IBAN.</div>
 
     <div class="section-label">Payment to refund</div>
-    <select id="refund-payment" class="select-input" onchange="onRefundPaymentChange()"><option value="">Select a completed deposit&hellip;</option></select>
+    <div class="custom-select">
+      <button type="button" class="select-input custom-select-trigger" id="refund-payment-trigger" onclick="toggleCustomSelect('refund-payment')">Select a completed deposit&hellip;</button>
+      <div class="custom-select-panel" id="refund-payment-panel"></div>
+      <select id="refund-payment" class="select-input" onchange="onRefundPaymentChange()" style="display:none;"><option value="">Select a completed deposit&hellip;</option></select>
+    </div>
 
     <div class="form-row">
       <div>
@@ -1099,12 +1117,16 @@ body.phone-widget-active #lean-sdk-iframe {
       </div>
       <div>
         <div class="section-label">Reason</div>
-        <select id="refund-reason" class="select-input">
-          <option value="CUSTOMER_REQUEST">Requested by the client</option>
-          <option value="DUPLICATED_PAYMENT">Duplicated payment</option>
-          <option value="ORDER_CANCELLED">Service/order cancellation</option>
-          <option value="FRAUDULENT_PAYMENT">Fraudulent payment</option>
-        </select>
+        <div class="custom-select">
+          <button type="button" class="select-input custom-select-trigger" id="refund-reason-trigger" onclick="toggleCustomSelect('refund-reason')">Requested by the client</button>
+          <div class="custom-select-panel" id="refund-reason-panel"></div>
+          <select id="refund-reason" class="select-input" style="display:none;">
+            <option value="CUSTOMER_REQUEST">Requested by the client</option>
+            <option value="DUPLICATED_PAYMENT">Duplicated payment</option>
+            <option value="ORDER_CANCELLED">Service/order cancellation</option>
+            <option value="FRAUDULENT_PAYMENT">Fraudulent payment</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -1368,7 +1390,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.7
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.8
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -4357,6 +4379,52 @@ async function handlePayout() {
 // /api/refunds/:id (Approve/Reject below) is the separate confirmation step
 // that actually lets it move — see server.js for details.
 
+// ── Custom select ────────────────────────────────────────────────────────
+// A real <select> stays in the DOM (hidden) as the actual source of truth —
+// every existing onchange/.value/.selectedIndex/.dataset read against it
+// keeps working untouched — while this renders a fully custom-styled
+// button + option list on top, since the native dropdown's own popup can't
+// be styled beyond option background/color (see the CSS comment). Call
+// syncCustomSelect() any time the underlying <select>'s innerHTML/value is
+// changed programmatically, so the visible copy doesn't go stale.
+function syncCustomSelect(nativeId) {
+  const sel     = document.getElementById(nativeId);
+  const trigger = document.getElementById(nativeId + "-trigger");
+  const panel   = document.getElementById(nativeId + "-panel");
+  if (!sel || !trigger || !panel) return;
+  const options = Array.from(sel.options);
+  trigger.textContent = options[sel.selectedIndex]?.textContent || options[0]?.textContent || "";
+  panel.innerHTML = options.map((o, i) => `
+    <div class="custom-select-option${i === sel.selectedIndex ? " selected" : ""}" onclick="selectCustomOption('${nativeId}', ${i})">
+      <span class="custom-select-check">&#10003;</span>${o.textContent}
+    </div>
+  `).join("");
+}
+
+function toggleCustomSelect(nativeId) {
+  const panel = document.getElementById(nativeId + "-panel");
+  const isOpen = panel.classList.contains("open");
+  document.querySelectorAll(".custom-select-panel.open").forEach(p => p.classList.remove("open"));
+  if (!isOpen) panel.classList.add("open");
+}
+
+function selectCustomOption(nativeId, index) {
+  const sel = document.getElementById(nativeId);
+  sel.selectedIndex = index;
+  sel.dispatchEvent(new Event("change"));
+  syncCustomSelect(nativeId);
+  document.getElementById(nativeId + "-panel").classList.remove("open");
+}
+
+document.addEventListener("click", (e) => {
+  document.querySelectorAll(".custom-select").forEach((wrap) => {
+    if (!wrap.contains(e.target)) wrap.querySelector(".custom-select-panel")?.classList.remove("open");
+  });
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") document.querySelectorAll(".custom-select-panel.open").forEach(p => p.classList.remove("open"));
+});
+
 const REFUND_STATUS_LABELS = {
   CREATED:           { label: "Awaiting approval",     cls: "OUTSTANDING" },
   APPROVED:          { label: "Approved — processing", cls: "OUTSTANDING" },
@@ -4383,6 +4451,7 @@ function populateRefundPaymentOptions() {
   }).join("");
   sel.innerHTML = `<option value="">Select a completed deposit&hellip;</option>${options}`;
   if (current) sel.value = current;
+  syncCustomSelect("refund-payment");
 }
 
 function onRefundPaymentChange() {
@@ -4413,7 +4482,10 @@ async function loadRefundReasons() {
     if (data.reasons?.length) {
       refundReasons = data.reasons;
       const sel = document.getElementById("refund-reason");
-      if (sel) sel.innerHTML = refundReasons.map(r => `<option value="${r.code}">${r.description}</option>`).join("");
+      if (sel) {
+        sel.innerHTML = refundReasons.map(r => `<option value="${r.code}">${r.description}</option>`).join("");
+        syncCustomSelect("refund-reason");
+      }
     }
   } catch (err) {
     console.warn("[Refunds] Could not load reason list:", err.message);
@@ -4421,6 +4493,12 @@ async function loadRefundReasons() {
 }
 
 function renderRefundTab() {
+  // Syncs immediately against whatever's already in the (hidden) native
+  // select — the hardcoded fallback <option>s the first time, or the real
+  // Lean-sourced list on later visits — rather than only after
+  // loadRefundReasons()'s fetch resolves, which would leave the custom
+  // panel empty for a beat (or entirely, if that fetch fails).
+  syncCustomSelect("refund-reason");
   if (!refundReasons.length) loadRefundReasons();
   loadRefundPayments();
   renderRefundList();
