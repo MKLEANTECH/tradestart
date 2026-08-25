@@ -2328,19 +2328,17 @@ app.get("/api/events", (req, res) => {
  *
  * Backs the frontend's "User Reset" button (userReset() in index.html —
  * renamed from the earlier devReset()/"Dev Reset" label; this route's path
- * was left as-is). DEV-ONLY cleanup tool: deletes the user's bank entity on
- * Lean's side (so the same Mockbank test user can be relinked) and clears
- * them from the in-memory store, so you can run the full Link flow again
- * from scratch without manually curling Lean's API every time.
+ * was left as-is). Cleanup tool: deletes the user's bank entity on Lean's
+ * side (so the same Mockbank test user can be relinked) and clears them
+ * from the in-memory store, so you can run the full Link flow again from
+ * scratch without manually curling Lean's API every time.
  *
- * Not a production endpoint — entities should normally persist across
- * sessions. Guarded so it only runs when NODE_ENV !== "production".
+ * Deliberately enabled in production too (unlike the other /api/dev/*
+ * routes below, which stay guarded) — this is a demo app on a single
+ * shared deployment, not a real production service with real user data,
+ * and testers need to be able to reset their own session there directly.
  */
 app.delete("/api/dev/reset", async (req, res) => {
-  if (process.env.NODE_ENV === "production") {
-    return res.status(403).json({ error: "Disabled in production" });
-  }
-
   try {
     const { appUserId } = req.query;
     const user = store[appUserId];
