@@ -266,6 +266,13 @@ main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px
    own) — do NOT also nest one inside .input-wrap, or the borders double up. */
 .select-input { display:block; width:100%; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); font-size:14px; font-weight:500; color:var(--text); padding:11px 36px 11px 14px; font-family:inherit; transition:border-color 0.15s; margin-bottom:12px; cursor:pointer; appearance:none; -webkit-appearance:none; -moz-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394A3B8' stroke-width='1.8'%3E%3Cpath d='M6 8l4 4 4-4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; background-size:14px; }
 .select-input:focus { outline:none; border-color:var(--emerald); }
+/* The closed box above is fully custom-styled (appearance:none), but the
+   OPEN dropdown list is rendered by the OS/browser chrome, not by us — this
+   is the one part of it Chrome/Firefox do actually let CSS reach, so
+   without it the popup falls back to plain white-on-black regardless of
+   theme, clashing hard in dark mode. Safari still ignores this; there's no
+   further reach into a native select's popup rendering from CSS alone. */
+.select-input option { background:var(--surface); color:var(--text); }
 
 /* Deliberately distinct from .text-field: a readonly, click-to-copy URL
    needs to fit more characters per line and reads better monospaced — but
@@ -1361,7 +1368,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.6
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.7
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
