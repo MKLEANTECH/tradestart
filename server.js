@@ -1597,6 +1597,122 @@ app.get("/api/dataonly/accounts", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// INSIGHTS ROUTES
+//
+// Derived analytics on top of the SAME entity Data Only already connects —
+// no new Lean.connect() permission, no separate consent (Lean's own spec
+// requires only the accounts+transactions scope Data Only already requests).
+// Every read below is a single synchronous backend call, same shape as AVS
+// below — no SDK, no webhook, no polling.
+// ═══════════════════════════════════════════════════════════════════════════
+
+function requireDataOnlyEntity(req, res) {
+  const user = store[req.query.appUserId];
+  if (!user?.dataOnlyEntityId) {
+    res.status(400).json({ error: "No Data Only bank linked for this user" });
+    return null;
+  }
+  return user;
+}
+
+app.get("/api/insights/account-controls", async (req, res) => {
+  const user = requireDataOnlyEntity(req, res);
+  if (!user) return;
+  try {
+    res.json(await leanFetch(`/insights/v3/account-controls?entity_id=${user.dataOnlyEntityId}`));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+app.get("/api/insights/cashflow-patterns", async (req, res) => {
+  const user = requireDataOnlyEntity(req, res);
+  if (!user) return;
+  try {
+    res.json(await leanFetch(`/insights/v3/cashflow-patterns?entity_id=${user.dataOnlyEntityId}`));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+app.get("/api/insights/credit-assessments", async (req, res) => {
+  const user = requireDataOnlyEntity(req, res);
+  if (!user) return;
+  try {
+    res.json(await leanFetch(`/insights/v3/credit-assessments?entity_id=${user.dataOnlyEntityId}`));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+app.get("/api/insights/credit-obligations", async (req, res) => {
+  const user = requireDataOnlyEntity(req, res);
+  if (!user) return;
+  try {
+    res.json(await leanFetch(`/insights/v3/credit-obligations?entity_id=${user.dataOnlyEntityId}`));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+app.get("/api/insights/expenses", async (req, res) => {
+  const user = requireDataOnlyEntity(req, res);
+  if (!user) return;
+  try {
+    res.json(await leanFetch(`/insights/v2/expenses?entity_id=${user.dataOnlyEntityId}`));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+app.get("/api/insights/spending", async (req, res) => {
+  const user = requireDataOnlyEntity(req, res);
+  if (!user) return;
+  try {
+    res.json(await leanFetch(`/insights/v3/spending?entity_id=${user.dataOnlyEntityId}`));
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+// Lean's income endpoint is a POST (body-scoped entity_id + optional
+// filters) even though every other Insights read here is a GET — kept as a
+// GET on our own side so the frontend can treat it like the rest of this page.
+app.get("/api/insights/income", async (req, res) => {
+  const user = requireDataOnlyEntity(req, res);
+  if (!user) return;
+  try {
+    const result = await leanFetch("/insights/v2/income", {
+      method: "POST",
+      body: JSON.stringify({ entity_id: user.dataOnlyEntityId }),
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+// The one Insights call that takes real input — checks whether a given name
+// matches the name Lean holds for the account. appUserId is in the body
+// (not query) for this one since it's a POST, same convention as elsewhere
+// in this file (e.g. /api/refunds).
+app.post("/api/insights/name-verification", async (req, res) => {
+  const { appUserId, fullName } = req.body;
+  const user = store[appUserId];
+  if (!user?.dataOnlyEntityId) return res.status(400).json({ error: "No Data Only bank linked for this user" });
+  if (!fullName) return res.status(400).json({ error: "fullName is required" });
+  try {
+    const result = await leanFetch("/insights/v1/name-verification", {
+      method: "POST",
+      body: JSON.stringify({ entity_id: user.dataOnlyEntityId, full_name: fullName }),
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message, detail: err.body });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // AVS ROUTES (Account Verification Solution)
 //
 // Unlike every other feature in this app, AVS has NOTHING to do with the

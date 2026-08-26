@@ -122,6 +122,23 @@ header { background:var(--surface); border-bottom:1px solid var(--border); paddi
 .nav-tab .tab-icon { font-size:18px; line-height:1; }
 .nav-tab .tab-icon svg { display:block; width:18px; height:18px; stroke:currentColor; }
 
+/* Secondary nav row — one per top-level group (Pay by Bank / Data APIs /
+   Financial Operations), sitting below the main header. Only the active
+   group's row is shown at a time (switchPage() toggles .active on both the
+   wrapper and the matching row); deliberately smaller/pill-shaped rather
+   than reusing .nav-tab's full-height column style, so it reads as a
+   subordinate level under the top nav rather than a second identical bar.
+   Sticky (not the header itself — only asked for this row to stay put) so
+   it's still reachable after scrolling into a long page's content. */
+.sub-nav { display:none; position:sticky; top:0; z-index:50; background:var(--surface-2); border-bottom:1px solid var(--border); padding:0 32px; flex-shrink:0; }
+.sub-nav.active { display:block; }
+.sub-nav-row { display:none; }
+.sub-nav-row.active { display:flex; }
+.sub-tab { flex:1; display:flex; align-items:center; justify-content:center; gap:7px; padding:14px 16px; border-radius:0; border:none; border-bottom:2.5px solid transparent; background:transparent; color:var(--text-3); font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+.sub-tab svg { display:block; width:15px; height:15px; stroke:currentColor; flex-shrink:0; }
+.sub-tab:hover { background:var(--surface); color:var(--text-2); }
+.sub-tab.active { color:var(--emerald-dark); border-bottom-color:var(--emerald); }
+
 /* Main + pages — wide layout so tabs use the full window instead of one
    narrow centered column. Two-column pages collapse to one below 920px. */
 main { flex:1; display:flex; justify-content:center; padding:28px 80px 48px 32px; }
@@ -684,29 +701,14 @@ body.phone-widget-active #lean-sdk-iframe {
     <button class="nav-tab active" id="nav-INTEGRATIONS" onclick="switchPage('INTEGRATIONS')">
       <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="2" stroke-width="1.8"/><rect x="13" y="3" width="8" height="8" rx="2" stroke-width="1.8"/><rect x="3" y="13" width="8" height="8" rx="2" stroke-width="1.8"/><rect x="13" y="13" width="8" height="8" rx="2" stroke-width="1.8"/></svg></span>Integrations</span>
     </button>
-    <button class="nav-tab" id="nav-AOF" onclick="switchPage('AOF')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke-width="1.8"/><path d="M8 11V7a4 4 0 018 0v4" stroke-width="1.8" stroke-linecap="round"/></svg></span>AoF</span>
+    <button class="nav-tab" id="nav-group-PAY_BY_BANK" onclick="switchToGroup('PAY_BY_BANK')">
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M3 10l9-6 9 6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9M10 10v9M14 10v9M19 10v9" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke-width="1.8" stroke-linecap="round"/></svg></span>Pay by Bank</span>
     </button>
-    <button class="nav-tab" id="nav-SIP" onclick="switchPage('SIP')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke-width="1.8" stroke-linejoin="round"/></svg></span>SIP</span>
+    <button class="nav-tab" id="nav-group-DATA_APIS" onclick="switchToGroup('DATA_APIS')">
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="5" rx="8" ry="3" stroke-width="1.8"/><path d="M4 5v14c0 1.66 3.58 3 8 3s8-1.34 8-3V5" stroke-width="1.8"/><path d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3" stroke-width="1.8"/></svg></span>Data APIs</span>
     </button>
-    <button class="nav-tab" id="nav-RECON" onclick="switchPage('RECON')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M12 20V4M20 20v-7" stroke-width="1.8" stroke-linecap="round"/></svg></span>Recon</span>
-    </button>
-    <button class="nav-tab" id="nav-PAYOUT" onclick="switchPage('PAYOUT')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" stroke-width="1.8"/></svg></span>Payout</span>
-    </button>
-    <button class="nav-tab" id="nav-REFUND" onclick="switchPage('REFUND')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M9 14L4 9l5-5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10a6 6 0 016 6v1" stroke-width="1.8" stroke-linecap="round"/></svg></span>Refund</span>
-    </button>
-    <button class="nav-tab" id="nav-SCHEDULE" onclick="switchPage('SCHEDULE')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke-width="1.8"/><path d="M3 9h18M8 3v4M16 3v4" stroke-width="1.8" stroke-linecap="round"/></svg></span>Schedule</span>
-    </button>
-    <button class="nav-tab" id="nav-AVS" onclick="switchPage('AVS')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>AVS</span>
-    </button>
-    <button class="nav-tab" id="nav-LINKS" onclick="switchPage('LINKS')">
-      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M10 13a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Links</span>
+    <button class="nav-tab" id="nav-group-FINANCIAL_OPS" onclick="switchToGroup('FINANCIAL_OPS')">
+      <span class="tab-main"><span class="tab-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2" stroke-width="1.8"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" stroke-width="1.8"/><path d="M3 12h18" stroke-width="1.8"/></svg></span>Financial Operations</span>
     </button>
   </nav>
 
@@ -717,6 +719,45 @@ body.phone-widget-active #lean-sdk-iframe {
     </div>
   </div>
 </header>
+
+<!-- Sub-nav — one row per top-level group, only the active group's row shown
+     (see switchPage()'s group-lookup logic); Integrations has no group, so
+     the whole wrapper is hidden while it's active. -->
+<div class="sub-nav" id="sub-nav">
+  <div class="sub-nav-row" id="subnav-PAY_BY_BANK">
+    <button class="sub-tab" id="subtab-AOF" onclick="switchPage('AOF')">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="9" rx="2" stroke-width="1.8"/><path d="M8 11V7a4 4 0 018 0v4" stroke-width="1.8" stroke-linecap="round"/></svg>AoF
+    </button>
+    <button class="sub-tab" id="subtab-SIP" onclick="switchPage('SIP')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" stroke-width="1.8" stroke-linejoin="round"/></svg>SIP
+    </button>
+    <button class="sub-tab" id="subtab-SCHEDULE" onclick="switchPage('SCHEDULE')">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="16" rx="2" stroke-width="1.8"/><path d="M3 9h18M8 3v4M16 3v4" stroke-width="1.8" stroke-linecap="round"/></svg>Schedule
+    </button>
+    <button class="sub-tab" id="subtab-LINKS" onclick="switchPage('LINKS')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M10 13a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 11a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Links
+    </button>
+  </div>
+  <div class="sub-nav-row" id="subnav-DATA_APIS">
+    <button class="sub-tab" id="subtab-AVS" onclick="switchPage('AVS')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>AVS
+    </button>
+    <button class="sub-tab" id="subtab-INSIGHTS" onclick="switchPage('INSIGHTS')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0012 3z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Insights
+    </button>
+  </div>
+  <div class="sub-nav-row" id="subnav-FINANCIAL_OPS">
+    <button class="sub-tab" id="subtab-RECON" onclick="switchPage('RECON')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M12 20V4M20 20v-7" stroke-width="1.8" stroke-linecap="round"/></svg>Recon
+    </button>
+    <button class="sub-tab" id="subtab-PAYOUT" onclick="switchPage('PAYOUT')">
+      <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" stroke-width="1.8"/></svg>Payout
+    </button>
+    <button class="sub-tab" id="subtab-REFUND" onclick="switchPage('REFUND')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 14L4 9l5-5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 9h10a6 6 0 016 6v1" stroke-width="1.8" stroke-linecap="round"/></svg>Refund
+    </button>
+  </div>
+</div>
 
 <main>
 <!-- INTEGRATIONS PAGE -->
@@ -1310,6 +1351,93 @@ body.phone-widget-active #lean-sdk-iframe {
 </div>
 </div>
 
+<!-- INSIGHTS PAGE -->
+<div class="page" id="page-INSIGHTS">
+<button class="page-help-btn" onclick="openInfoModal('INSIGHTS')" title="Why Insights?">?</button>
+
+<div class="flow-diagram-layout">
+<div class="col-stack">
+  <div class="card" id="insights-unlinked">
+    <div class="card-eyebrow">Get started</div>
+    <div class="card-title">Connect a bank account first</div>
+    <div class="card-subtitle">Insights reads from the same entity Data Only already connects &mdash; no separate consent or Lean.connect() permission needed. Connect via Data Only, then come back here.</div>
+    <button class="btn btn-primary" style="max-width:280px;" onclick="switchPage('INTEGRATIONS'); openIntegrationDemo('DATAONLY');">Go to Data Only</button>
+  </div>
+
+  <div id="insights-linked" style="display:none;">
+  <div class="card">
+    <div class="card-eyebrow">Insights</div>
+    <div class="card-title">Account eligibility</div>
+    <div class="card-subtitle">Signals and configurable thresholds on the connected account, with a simple eligible / not-eligible verdict.</div>
+    <div id="insights-controls-body"><div class="tx-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Income</div>
+    <div class="card-subtitle">Salary and non-salary income detected from transaction history, plus how stable it's been.</div>
+    <div id="insights-income-body"><div class="tx-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Expenses</div>
+    <div class="card-subtitle">Monthly spend, broken down by category.</div>
+    <div id="insights-expenses-body"><div class="tx-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Spending</div>
+    <div class="card-subtitle">The same spend, sliced three different ways.</div>
+    <div class="inner-tab-bar">
+      <button class="inner-tab-btn active" id="insights-spending-tab-category" onclick="setInsightsSpendingView('category')">By category</button>
+      <button class="inner-tab-btn" id="insights-spending-tab-merchant" onclick="setInsightsSpendingView('merchant')">By merchant</button>
+      <button class="inner-tab-btn" id="insights-spending-tab-location" onclick="setInsightsSpendingView('location')">By location</button>
+    </div>
+    <div id="insights-spending-body"><div class="tx-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cashflow patterns</div>
+    <div class="card-subtitle">Recurring transactions Lean detected &mdash; subscriptions, salary, rent &mdash; with how regular each one is.</div>
+    <div id="insights-cashflow-body"><div class="tx-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Credit obligations</div>
+    <div class="card-subtitle">Existing loan repayments and disbursements, by lender.</div>
+    <div id="insights-obligations-body"><div class="tx-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Credit assessment</div>
+    <div class="card-subtitle">Affordability and debt-burden-ratio, computed from income, expenses and balance history.</div>
+    <div id="insights-assessment-body"><div class="tx-empty">Loading&hellip;</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Name verification</div>
+    <div class="card-subtitle">Match a name against the account holder's real bank identity &mdash; try editing the name to see a partial or no match.</div>
+    <div class="input-wrap">
+      <input type="text" id="insights-name-input" placeholder="Full name" class="text-field" />
+    </div>
+    <button class="btn btn-secondary" style="max-width:200px;" onclick="handleInsightsNameVerification()">Verify name</button>
+    <p class="status-msg" id="status-insights-name"></p>
+    <div id="insights-name-result"></div>
+  </div>
+  </div>
+</div>
+<div class="card flow-diagram-panel">
+  <div class="flow-diagram-panel-header">
+    <div class="card-eyebrow">Insights — Flow Breakdown</div>
+    <div class="flow-diagram-panel-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('INSIGHTS')">Open</button>
+      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/overview-of-insights-apis" target="_blank" rel="noopener">Docs</a>
+    </div>
+  </div>
+  <div class="flow-diagram-svg-wrap" id="diagram-INSIGHTS"></div>
+</div>
+</div>
+</div>
+
 <!-- PAYMENT LINKS PAGE -->
 <div class="page" id="page-LINKS">
 <button class="page-help-btn" onclick="openInfoModal('LINKS')" title="Why Payment Links?">?</button>
@@ -1390,7 +1518,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.0.9
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.0
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2147,7 +2275,10 @@ let entityId          = null;
 let paymentSourceId   = null;
 let beneficiaryStatus = null;
 // Data Only field — its own independent entity, never the same one as above
-let dataOnlyEntityId  = null;
+let dataOnlyEntityId    = null;
+// Set once loadDataOnlyAccounts() reads it — used only to pre-fill the
+// Insights name-verification field, purely a demo-UX convenience.
+let dataOnlyIdentityName = null;
 // OF fields
 let consentId     = null;
 let consentStatus = null;
@@ -2245,13 +2376,56 @@ function setCpAmount(val)  { document.getElementById("cp-deposit-amount").value 
 function setAofAmount(val) { document.getElementById("aof-deposit-amount").value = val; }
 
 // ─── PAGE NAVIGATION ────────────────────────────────────────────────────────
+// Groups add a level ABOVE the existing flat pages rather than restructuring
+// them — every .page div stays exactly where it was, this just decides which
+// top-level nav button and which secondary sub-nav row light up for a given
+// page. lastActiveChildOfGroup means clicking a group tab directly returns
+// you to whichever of its pages you were last on, not always the first one.
+const NAV_GROUPS = {
+  PAY_BY_BANK:   { children: ["AOF", "SIP", "SCHEDULE", "LINKS"] },
+  DATA_APIS:     { children: ["AVS", "INSIGHTS"] },
+  FINANCIAL_OPS: { children: ["RECON", "PAYOUT", "REFUND"] },
+};
+const ALL_PAGES = ["INTEGRATIONS", "AOF", "SIP", "RECON", "PAYOUT", "REFUND", "SCHEDULE", "AVS", "LINKS", "INSIGHTS"];
+const PAGE_TO_GROUP = {};
+const lastActiveChildOfGroup = {};
+Object.entries(NAV_GROUPS).forEach(([groupKey, group]) => {
+  lastActiveChildOfGroup[groupKey] = group.children[0];
+  group.children.forEach((p) => { PAGE_TO_GROUP[p] = groupKey; });
+});
+
+function switchToGroup(groupKey) {
+  switchPage(lastActiveChildOfGroup[groupKey]);
+}
+
 function switchPage(page) {
-  ["INTEGRATIONS","AOF","SIP","RECON","PAYOUT","REFUND","SCHEDULE","AVS","LINKS"].forEach(p => {
-    document.getElementById("nav-" + p).classList.toggle("active", p === page);
+  ALL_PAGES.forEach((p) => {
     const el = document.getElementById("page-" + p);
     if (el) el.classList.toggle("active", p === page);
   });
   currentPage = page;
+
+  // Top-level nav: Integrations lights up on its own; every grouped page
+  // lights up its PARENT group's button instead of an individual one (there
+  // is no individual nav-AOF/nav-SIP/etc. button anymore, see the sub-nav).
+  const group = PAGE_TO_GROUP[page];
+  document.getElementById("nav-INTEGRATIONS").classList.toggle("active", page === "INTEGRATIONS");
+  Object.keys(NAV_GROUPS).forEach((g) => {
+    document.getElementById("nav-group-" + g).classList.toggle("active", g === group);
+  });
+
+  // Sub-nav: hide the whole row entirely on Integrations (no group), else
+  // show only the active group's row with the right child highlighted.
+  document.getElementById("sub-nav").classList.toggle("active", !!group);
+  Object.keys(NAV_GROUPS).forEach((g) => {
+    document.getElementById("subnav-" + g).classList.toggle("active", g === group);
+  });
+  if (group) {
+    lastActiveChildOfGroup[group] = page;
+    NAV_GROUPS[group].children.forEach((p) => {
+      document.getElementById("subtab-" + p).classList.toggle("active", p === page);
+    });
+  }
 
   if (page === "INTEGRATIONS") closeIntegrationDemo();
   if (page === "AOF")      { renderAofTab(); renderFlowDiagram("AOF"); }
@@ -2262,6 +2436,7 @@ function switchPage(page) {
   if (page === "SCHEDULE") { loadSchedules(); renderFlowDiagram("SCHEDULE"); }
   if (page === "AVS")      { loadAvsHistory(); renderFlowDiagram("AVS"); }
   if (page === "LINKS")    { loadPaymentLinks(); renderFlowDiagram("LINKS"); }
+  if (page === "INSIGHTS") { loadInsights(); renderFlowDiagram("INSIGHTS"); }
 }
 
 // authorizeConsent() is called with success/fail redirect URLs (see
@@ -2916,6 +3091,7 @@ async function loadDataOnlyAccounts() {
     if (!accounts.length) { el.innerHTML = '<div class="tx-empty">No accounts found</div>'; return; }
 
     if (data.identity?.name) {
+      dataOnlyIdentityName = data.identity.name;
       idEl.innerHTML = `
         <table class="recon-table">
           <tbody>
@@ -2968,6 +3144,205 @@ async function loadDataOnlyAccounts() {
   } catch (err) {
     el.innerHTML = `<div class="tx-empty">Could not load accounts: ${err.message}</div>`;
     console.error("Data Only accounts error:", err);
+  }
+}
+
+// ─── INSIGHTS ───────────────────────────────────────────────────────────────
+// Reads from the SAME entity Data Only already connects (see server.js's
+// INSIGHTS ROUTES block) — no separate consent, no SDK. Each section loads
+// and fails independently so one slow/failing insight type never blanks the
+// rest of the page, same resilience pattern as loadDataOnlyAccounts() above.
+function humanizeInsightKey(key) {
+  return String(key || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function fmtInsightValue(v) {
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (v === null || v === undefined || v === "") return "—";
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+function fmtCurrency(v) { return `AED ${fmt(v || 0)}`; }
+function renderInsightKeyValueTable(obj) {
+  const rows = Object.entries(obj || {}).map(([k, v]) => `<tr><td style="color:var(--text-3);">${humanizeInsightKey(k)}</td><td>${fmtInsightValue(v)}</td></tr>`).join("");
+  return rows ? `<table class="recon-table"><tbody>${rows}</tbody></table>` : '<div class="tx-empty">No data available</div>';
+}
+
+async function loadInsights() {
+  const gate = document.getElementById("insights-unlinked");
+  const body = document.getElementById("insights-linked");
+  if (!dataOnlyEntityId) {
+    gate.style.display = "";
+    body.style.display = "none";
+    return;
+  }
+  gate.style.display = "none";
+  body.style.display = "flex";
+
+  loadInsightSection("account-controls",    "insights-controls-body",    renderAccountControls);
+  loadInsightSection("income",              "insights-income-body",      renderIncome);
+  loadInsightSection("expenses",            "insights-expenses-body",    renderExpenses);
+  loadInsightSection("spending",            "insights-spending-body",    renderSpending);
+  loadInsightSection("cashflow-patterns",   "insights-cashflow-body",    renderCashflowPatterns);
+  loadInsightSection("credit-obligations",  "insights-obligations-body", renderCreditObligations);
+  loadInsightSection("credit-assessments",  "insights-assessment-body",  renderCreditAssessments);
+
+  // Pre-fill with whatever identity name Data Only already knows, so the
+  // demo can show a match immediately and an edited name to show a
+  // mismatch live, without retyping the whole thing.
+  const nameInput = document.getElementById("insights-name-input");
+  if (nameInput && !nameInput.value && dataOnlyIdentityName) nameInput.value = dataOnlyIdentityName;
+}
+
+async function loadInsightSection(endpoint, elId, renderFn) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '<div class="tx-empty">Loading&hellip;</div>';
+  try {
+    const res  = await fetch(`${BACKEND}/api/insights/${endpoint}?appUserId=${appUserId}`);
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || "Could not load");
+    renderFn(el, data);
+  } catch (err) {
+    el.innerHTML = `<div class="tx-empty">Could not load: ${err.message}</div>`;
+  }
+}
+
+function renderAccountControls(el, data) {
+  const ac = data.account_controls || data;
+  const verdict = ac.verdict?.eligible;
+  el.innerHTML = `
+    <span class="recon-badge ${verdict ? "RECONCILED" : "UNRECEIVED"}" style="margin-bottom:14px; display:inline-flex;">${verdict ? "Eligible" : "Not eligible"}</span>
+    ${renderInsightKeyValueTable({ ...(ac.signals || {}), ...(ac.thresholds || {}) })}
+  `;
+}
+
+function renderIncome(el, data) {
+  const salary    = data.salary?.total || {};
+  const nonSalary = data.non_salary?.total || {};
+  el.innerHTML = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Salary / month</div><div class="stat-value green">${fmtCurrency(salary.average_monthly_amount)}</div></div>
+      <div class="stat-card"><div class="stat-label">Non-salary / month</div><div class="stat-value">${fmtCurrency(nonSalary.average_monthly_amount)}</div></div>
+    </div>
+  `;
+}
+
+function renderExpenses(el, data) {
+  const total = data.total || {};
+  const breakdownContainer = total.breakdown;
+  const categories = Array.isArray(breakdownContainer) ? breakdownContainer : (breakdownContainer?.breakdowns || []);
+  const rows = categories.map((c) => `
+    <tr><td>${humanizeInsightKey(c.category)}</td><td style="text-align:right;">${c.count ?? "—"}</td><td style="text-align:right; font-weight:700;">${fmtCurrency(c.amount)}</td></tr>
+  `).join("");
+  el.innerHTML = `
+    <div class="stat-row"><div class="stat-card"><div class="stat-label">Total / month</div><div class="stat-value">${fmtCurrency(total.average_monthly_amount)}</div></div></div>
+    ${rows ? `<table class="recon-table"><thead><tr><th>Category</th><th style="text-align:right;">Count</th><th style="text-align:right;">Amount</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="tx-empty">No category breakdown available</div>'}
+  `;
+}
+
+let insightsSpendingData = null;
+let insightsSpendingView = "category";
+function renderSpending(el, data) {
+  insightsSpendingData = data.spending || data;
+  renderSpendingView();
+}
+function setInsightsSpendingView(view) {
+  insightsSpendingView = view;
+  ["category", "merchant", "location"].forEach((v) => {
+    document.getElementById(`insights-spending-tab-${v}`).classList.toggle("active", v === view);
+  });
+  renderSpendingView();
+}
+function renderSpendingView() {
+  const el = document.getElementById("insights-spending-body");
+  if (!insightsSpendingData) return;
+  const key  = `by_${insightsSpendingView}`;
+  const cols = { category: "Category", merchant: "Merchant", location: "Location" }[insightsSpendingView];
+  const rows = (insightsSpendingData[key]?.breakdown || []).map((r) => {
+    const label = r.merchant_name || r.location || [r.primary_category, r.secondary_category].filter(Boolean).join(" · ") || "—";
+    return `<tr><td>${label}</td><td style="text-align:right;">${r.transaction_count ?? "—"}</td><td style="text-align:right; font-weight:700;">${fmtCurrency(r.total_amount)}</td></tr>`;
+  }).join("");
+  el.innerHTML = rows
+    ? `<table class="recon-table"><thead><tr><th>${cols}</th><th style="text-align:right;">Transactions</th><th style="text-align:right;">Total</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="tx-empty">No spending data available</div>';
+}
+
+function renderCashflowPatterns(el, data) {
+  const patterns = Array.isArray(data) ? data : (data.cashflow_patterns || data.patterns || []);
+  if (!patterns.length) { el.innerHTML = '<div class="tx-empty">No recurring patterns detected</div>'; return; }
+  const rows = patterns.map((p) => {
+    const status = p.regularity?.activity_status;
+    const cls = status === "ONGOING" ? "RECONCILED" : status === "STOPPED" ? "UNKNOWN" : "OUTSTANDING";
+    return `
+      <tr>
+        <td>${p.counter_party || humanizeInsightKey(p.primary_category)}</td>
+        <td>${p.regularity?.frequency || "—"}</td>
+        <td><span class="recon-badge ${cls}">${status || "—"}</span></td>
+        <td style="text-align:right; font-weight:700;">${fmtCurrency(p.total_amount?.amount ?? p.total_amount)}</td>
+      </tr>
+    `;
+  }).join("");
+  el.innerHTML = `<table class="recon-table"><thead><tr><th>Counter-party</th><th>Frequency</th><th>Status</th><th style="text-align:right;">Total</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderCreditObligations(el, data) {
+  const co = data.credit_obligations || data;
+  const breakdown = co.repayments?.breakdown || [];
+  if (!breakdown.length) { el.innerHTML = '<div class="tx-empty">No existing credit obligations detected</div>'; return; }
+  const rows = breakdown.map((b) => `
+    <tr><td>${b.lender_name || "—"}</td><td>${humanizeInsightKey(b.credit_type)}</td><td style="text-align:right;">${b.active_months ?? "—"}</td></tr>
+  `).join("");
+  el.innerHTML = `
+    <div class="stat-row"><div class="stat-card"><div class="stat-label">Monthly repayments</div><div class="stat-value">${fmtCurrency(co.repayments?.overall?.average_monthly_amount_active)}</div></div></div>
+    <table class="recon-table"><thead><tr><th>Lender</th><th>Type</th><th style="text-align:right;">Active months</th></tr></thead><tbody>${rows}</tbody></table>
+  `;
+}
+
+function renderCreditAssessments(el, data) {
+  const ca = data.credit_assessments || data;
+  const ci = ca.computed_indicators || {};
+  const dbrOverCeiling = ci.dbr?.ceiling != null && ci.dbr?.rate > ci.dbr.ceiling;
+  el.innerHTML = `
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Affordability</div><div class="stat-value green">${ci.affordability?.rate != null ? Math.round(ci.affordability.rate * 100) + "%" : "—"}</div></div>
+      <div class="stat-card"><div class="stat-label">Debt burden ratio</div><div class="stat-value ${dbrOverCeiling ? "red" : ""}">${ci.dbr?.rate != null ? Math.round(ci.dbr.rate * 100) + "%" : "—"}</div></div>
+      <div class="stat-card"><div class="stat-label">Max monthly installment</div><div class="stat-value">${fmtCurrency(ci.affordability?.maximum_monthly_installment)}</div></div>
+    </div>
+    ${renderInsightKeyValueTable({
+      "Monthly income":         fmtCurrency(ca.income?.total_contributed_monthly_income),
+      "Essential expenses":     fmtCurrency(ca.expenses?.average_monthly_essential_expenses),
+      "Discretionary expenses": fmtCurrency(ca.expenses?.average_monthly_discretionary_expenses),
+      "Net cashflow":           fmtCurrency(ci.average_monthly_net_cashflow),
+      "Average balance":        fmtCurrency(ca.balance?.average_balance),
+    })}
+  `;
+}
+
+async function handleInsightsNameVerification() {
+  const fullName  = document.getElementById("insights-name-input").value.trim();
+  const resultEl  = document.getElementById("insights-name-result");
+  if (!fullName) { setStatus("insights-name", "Enter a name to verify.", "error"); return; }
+  setStatus("insights-name", "Verifying…");
+  resultEl.innerHTML = "";
+  try {
+    const res  = await fetch(`${BACKEND}/api/insights/name-verification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId, fullName }),
+    });
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || "Verification failed");
+    const cls = data.match_type === "PERFECT_MATCH" ? "RECONCILED" : data.match_type === "PARTIAL_MATCH" ? "OUTSTANDING" : "UNRECEIVED";
+    resultEl.innerHTML = `
+      <span class="recon-badge ${cls}" style="margin-bottom:10px; display:inline-flex;">${humanizeInsightKey(data.match_type)}</span>
+      ${renderInsightKeyValueTable({
+        "Name provided": data.full_name_provided,
+        "Name on file":  data.full_name_retrieved,
+        "Confidence":    data.confidence != null ? Math.round(data.confidence * 100) + "%" : "—",
+      })}
+    `;
+    setStatus("insights-name", "");
+  } catch (err) {
+    setStatus("insights-name", `Error: ${err.message}`, "error");
   }
 }
 
@@ -4020,6 +4395,24 @@ const INTEGRATION_DIAGRAMS = {
       { type: "return", from: 4, to: 3, label: "200 OK (usages[])" },
     ],
   },
+  INSIGHTS: {
+    title: "Insights — Flow Breakdown",
+    steps: [
+      { type: "banner", text: "1) Runs on the SAME entity_id Data Only already connected — no new consent, no SDK" },
+      { type: "call",   from: 1, to: 3, label: "GET /api/insights/account-controls" },
+      { type: "call",   from: 3, to: 4, label: "GET /insights/v3/account-controls" },
+      { type: "return", from: 4, to: 3, label: "200 OK (signals, thresholds, verdict)" },
+      { type: "banner", text: "2) Same pattern for every other insight type — one GET, one synchronous answer" },
+      { type: "call",   from: 3, to: 4, label: "GET /insights/v2/income · v2/expenses · v3/spending" },
+      { type: "call",   from: 3, to: 4, label: "GET /insights/v3/cashflow-patterns · v3/credit-obligations · v3/credit-assessments" },
+      { type: "return", from: 4, to: 3, label: "200 OK — each answered in its own request, no webhook" },
+      { type: "banner", text: "3) Name verification is the one write — POST with a name to check" },
+      { type: "call",   from: 1, to: 3, label: "POST /api/insights/name-verification" },
+      { type: "call",   from: 3, to: 4, label: "POST /insights/v1/name-verification" },
+      { type: "return", from: 4, to: 3, label: "200 OK (match_type, confidence)" },
+      { type: "return", from: 3, to: 1, label: "Return each result to render" },
+    ],
+  },
 };
 
 // Renders (once, then cached) the given flow's diagram into its page's own
@@ -4046,6 +4439,7 @@ const DOCS_URLS = {
   SCHEDULE:   "https://docs.leantech.me/docs/getting-start-with-scheduled-payments",
   AVS:        "https://docs.leantech.me/docs/how-to-use-account-verification-service",
   LINKS:      "https://docs.leantech.me/docs/create-payment-link",
+  INSIGHTS:   "https://docs.leantech.me/docs/overview-of-insights-apis",
 };
 
 // Real flow-diagram screenshots pulled straight from Lean's own docs pages —
@@ -5173,6 +5567,15 @@ const INFO_CONTENT = {
       "A hosted checkout page Lean builds for you &mdash; share the URL, no in-app UI needed",
       "The only rail here where the payer never opens LinkSDK inside this app; they authorize on Lean's own page",
       "A link can be reused up to Max usages times, then flips to USED &mdash; Disable it any time before that to stop new payments",
+    ],
+  },
+  INSIGHTS: {
+    eyebrow: "Insights",
+    title:   "Why Insights?",
+    bullets: [
+      "Derived analytics on top of the SAME entity Data Only already connected &mdash; no separate consent or Lean.connect() permission",
+      "Eight endpoints in one product: eligibility signals, income, expenses, spending, recurring-payment detection, existing credit obligations, affordability/DBR, and name verification",
+      "Every read is a single synchronous backend call &mdash; no SDK, no redirect, no webhook to wait on",
     ],
   },
 };
