@@ -1530,7 +1530,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.0
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.1
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -1762,12 +1762,14 @@ body.phone-widget-active #lean-sdk-iframe {
 
           <p class="status-msg" id="mobile-status-profile"></p>
 
-          <div class="m-eyebrow">Payment history</div>
-          <div class="m-profile-row">
-            <span class="lbl">Consent for past SIP payments</span>
-            <button class="m-account-edit-btn" onclick="mobilePaymentHistoryConsents()">Payment History</button>
+          <div id="mobile-payment-history-section" style="display:none;">
+            <div class="m-eyebrow">Payment history</div>
+            <div class="m-profile-row">
+              <span class="lbl">Consent for past SIP payments</span>
+              <button class="m-account-edit-btn" onclick="mobilePaymentHistoryConsents()">Payment History</button>
+            </div>
+            <p class="status-msg" id="mobile-status-payment-history"></p>
           </div>
-          <p class="status-msg" id="mobile-status-payment-history"></p>
         </div>
       </div>
 
@@ -3517,10 +3519,12 @@ function renderConsentPanel(c) {
 function desktopManageConsents() {
   if (!customerId) { setStatus("aof-link", "Still initialising — please wait a moment.", "error"); return; }
 
+  // No consent_id here — omitting it (rather than scoping to just this
+  // AoF consent) shows the widget's full Data / Payment / Payment History
+  // tabs instead of just the one this button lives next to.
   callLeanSdk("Lean.manageConsents() — desktop consent management", Lean.manageConsents.bind(Lean), {
     app_token:    APP_TOKEN,
     customer_id:  customerId,
-    consent_id:   consentId,
     access_token: accessToken,
     sandbox:      true,
 
@@ -6022,6 +6026,23 @@ async function userReset() {
 let mobileAppOpen    = false;
 let mobileCurrentTab = "PORTFOLIO";
 
+// Payment History (Lean's payment-history consent, via manageConsents()) is
+// only relevant once there's SIP history to show — hidden until a SIP
+// payment actually happens, and hidden again once AoF ("One Tap Payment")
+// gets connected, since its own Edit button (no longer consent_id-scoped —
+// see mobileManageConsents()) now surfaces Data / Payment / Payment History
+// together anyway. sessionStorage-backed so it survives a page reload within
+// the same browser session, same as ts_user_id below.
+const MOBILE_SIP_PAYMENT_KEY = "ts_mobile_sip_payment_v1";
+function loadMobileHasSipPaymentPref() {
+  try { return sessionStorage.getItem(MOBILE_SIP_PAYMENT_KEY) === "true"; } catch { return false; }
+}
+let mobileHasSipPayment = loadMobileHasSipPaymentPref();
+function markMobileHasSipPayment() {
+  mobileHasSipPayment = true;
+  try { sessionStorage.setItem(MOBILE_SIP_PAYMENT_KEY, "true"); } catch {}
+}
+
 const MOBILE_TAB_TITLES = { PORTFOLIO: "Portfolio", DEPOSITS: "Deposits", WITHDRAW: "Withdraw", PROFILE: "Profile" };
 
 // This demo has no live holdings API — mock global blue-chip names with
@@ -6289,7 +6310,7 @@ async function mobilePayByBank() {
     if (!res.ok) throw new Error(data.error || "OF payment failed");
 
     if (data.status === "PROCESSED" || data.status === "CREATED" || data.status === "PROCESSING") {
-      mobileDepositSuccess(amount);
+      mobileDepositSuccess(amount, "AOF");
     } else {
       setStatusEl("mobile-status-deposit", `Payment ${data.status} — please try again.`, "error");
     }
@@ -6351,7 +6372,7 @@ async function mobileSipTopUp() {
       callback: (payload) => {
         console.log("[Lean.checkout — mobile SIP] Callback:", payload);
         if (payload.status === "SUCCESS" || payload.status === "PENDING") {
-          mobileDepositSuccess(amount);
+          mobileDepositSuccess(amount, "SIP");
         } else if (payload.status === "REDIRECT") {
           showMobileBankRedirectTransition();
         } else if (payload.status === "CANCELLED") {
@@ -6407,13 +6428,13 @@ async function handleMobileSipRedirectReturn(redirectParams = {}) {
     (data) => data.tradingBalance > tradingBalance,
     (data) => {
       const deposited = data.tradingBalance - tradingBalance;
-      mobileDepositSuccess(deposited);
+      mobileDepositSuccess(deposited, "SIP");
     },
     () => setStatusEl("mobile-status-deposit", "Payment is being processed. Check back shortly.", ""),
   );
 }
 
-function mobileDepositSuccess(amount) {
+function mobileDepositSuccess(amount, source) {
   tradingBalance += amount;
   document.getElementById("header-balance").style.display = "flex";
   document.getElementById("header-balance-val").textContent = `AED ${fmt(tradingBalance)}`;
@@ -6425,6 +6446,9 @@ function mobileDepositSuccess(amount) {
   document.getElementById("mobile-deposit-success-note").textContent = `New balance: AED ${fmt(tradingBalance)}`;
   document.getElementById("mobile-deposit-form").style.display = "none";
   document.getElementById("mobile-deposit-success").style.display = "flex";
+
+  // A SIP payment is what makes Payment History relevant — see renderMobileProfile().
+  if (source === "SIP") { markMobileHasSipPayment(); renderMobileProfile(); }
 
   renderMobilePortfolio();
   setTimeout(loadReconciliation, 3000);
@@ -6497,8 +6521,19 @@ function resetMobileWithdraw() {
   document.getElementById("mobile-withdraw-form").style.display = "flex";
 }
 
+// Payment History is only worth surfacing once there's SIP history behind
+// it, and stops being its own separate button the moment AoF ("One Tap
+// Payment") is connected — mobileManageConsents()'s Edit button is no
+// longer consent_id-scoped, so it already covers Data / Payment / Payment
+// History together at that point.
+function updateMobilePaymentHistoryVisibility() {
+  const section = document.getElementById("mobile-payment-history-section");
+  if (section) section.style.display = (mobileHasSipPayment && consentStatus !== "AUTHORISED") ? "" : "none";
+}
+
 // ── Profile — identity from the OF consent + consent management ────────────
 async function renderMobileProfile() {
+  updateMobilePaymentHistoryVisibility();
   const accountsBox = document.getElementById("mobile-profile-accounts");
   if (!consentId) {
     accountsBox.innerHTML = '<div class="tx-empty">Connect your bank via Open Finance to see connected accounts.</div>';
@@ -6512,6 +6547,7 @@ async function renderMobileProfile() {
     // Keep in sync with the source of truth — this is often how we find out
     // a consent was revoked from inside the manageConsents() widget itself.
     consentStatus = data.status;
+    updateMobilePaymentHistoryVisibility();
     // A revoked/expired consent's record (incl. consented_account) still
     // comes back from Lean — it's just no longer AUTHORISED — so a truthy
     // consented_account alone isn't enough to show the account as connected.
@@ -6538,10 +6574,10 @@ function mobileManageConsents() {
   setStatusEl("mobile-status-profile", "Opening consent management…");
   applyMobileSdkScope();
 
+  // No consent_id — see the matching note in desktopManageConsents() above.
   callLeanSdk("Lean.manageConsents() — mobile consent management", Lean.manageConsents.bind(Lean), {
     app_token:    APP_TOKEN,
     customer_id:  customerId,
-    consent_id:   consentId,
     access_token: accessToken,
     sandbox:      true,
 
