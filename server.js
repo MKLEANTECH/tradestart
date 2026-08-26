@@ -2473,6 +2473,11 @@ app.get("/api/events", (req, res) => {
     "Content-Type":  "text/event-stream",
     "Cache-Control":  "no-cache",
     Connection:       "keep-alive",
+    // Without this, a reverse proxy sitting in front of the app (Render's
+    // included) can buffer the response instead of streaming it — pushes
+    // still get sent from here, they just never actually reach the browser
+    // until the connection closes, which defeats the entire point of SSE.
+    "X-Accel-Buffering": "no",
   });
   res.flushHeaders?.();
 

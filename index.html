@@ -1530,7 +1530,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.8
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.9
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2908,6 +2908,28 @@ async function startLinkDataOnly() {
 // data ready seconds later on a manual refresh — it was waiting on the
 // wrong signal. Waits for BOTH now, and gives the slower data-refresh leg
 // more time than a plain entity lookup needs.
+// Falls back to a direct re-check when the live push apparently never
+// arrived. Confirmed directly against production that the backend can have
+// the correct state (dataOnlyEntityId set, dataOnlyRefreshStatus: FINISHED)
+// even when this wait times out — the SSE push isn't guaranteed to land
+// (proxy buffering between here and Render is the leading suspect), so
+// re-polling /api/init once before giving up catches that case instead of
+// making the user manually refresh for state the backend already has.
+async function refetchInitStatus() {
+  try {
+    const res  = await fetch(`${BACKEND}/api/init`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId }),
+    });
+    const data = await res.json();
+    if (res.ok) { lastStatusSnapshot = data; applyLiveStatus(data); }
+    return res.ok ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 function pollForDataOnlyEntity() {
   waitForStatus(
     (data) => !!data.dataOnlyEntityId,
@@ -2916,9 +2938,16 @@ function pollForDataOnlyEntity() {
       setStatusEl("status-do-link", "Bank linked! Fetching your account data…", "ok");
       pollForDataOnlyRefresh();
     },
-    () => {
-      setStatusEl("status-do-link", "Webhook took too long — try refreshing the page.", "error");
-      setLoading("btn-link-do", false, "Connect for data");
+    async () => {
+      const data = await refetchInitStatus();
+      if (data?.dataOnlyEntityId) {
+        dataOnlyEntityId = data.dataOnlyEntityId;
+        setStatusEl("status-do-link", "Bank linked! Fetching your account data…", "ok");
+        pollForDataOnlyRefresh();
+      } else {
+        setStatusEl("status-do-link", "Webhook took too long — try refreshing the page.", "error");
+        setLoading("btn-link-do", false, "Connect for data");
+      }
     },
   );
 }
@@ -2930,9 +2959,15 @@ function pollForDataOnlyRefresh() {
       setStatusEl("status-do-link", "");
       renderDataOnlyCard();
     },
-    () => {
-      setStatusEl("status-do-link", "Still fetching your data — try refreshing the page in a moment.", "error");
-      setLoading("btn-link-do", false, "Connect for data");
+    async () => {
+      const data = await refetchInitStatus();
+      if (data?.dataOnlyRefreshStatus === "FINISHED") {
+        setStatusEl("status-do-link", "");
+        renderDataOnlyCard();
+      } else {
+        setStatusEl("status-do-link", "Still fetching your data — try refreshing the page in a moment.", "error");
+        setLoading("btn-link-do", false, "Connect for data");
+      }
     },
     60000,
   );
