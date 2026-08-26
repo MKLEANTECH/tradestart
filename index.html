@@ -462,6 +462,7 @@ footer a { color:var(--text-3); text-decoration:none; }
 .info-modal-list li:last-child { margin-bottom:0; }
 .theme-toggle-btn { position:fixed; bottom:24px; left:24px; z-index:90; width:38px; height:38px; display:flex; align-items:center; justify-content:center; padding:0; border-radius:50%; background:var(--surface-2); border:1.5px solid var(--border); color:var(--text-2); font-size:16px; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
 .theme-toggle-btn:hover { border-color:var(--emerald); color:var(--emerald-dark); }
+.theme-toggle-btn svg { width:17px; height:17px; stroke:currentColor; display:block; }
 .page-help-btn { position:fixed; bottom:24px; left:74px; z-index:90; width:38px; height:38px; border-radius:50%; background:var(--emerald-light); border:1.5px solid var(--emerald); color:var(--emerald-dark); font-size:15px; font-weight:800; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(15,23,42,0.12); transition:all 0.15s; }
 .page-help-btn:hover { background:var(--emerald-dark); color:#fff; box-shadow:0 6px 18px rgba(15,23,42,0.16); }
 
@@ -1529,7 +1530,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.4
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.5
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -1852,9 +1853,11 @@ const THEME_KEY = "ts_theme_v1";
 function currentTheme() {
   return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
 }
+const THEME_ICON_SUN  = '<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke-width="1.8"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const THEME_ICON_MOON = '<svg viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function applyThemeIcon() {
   const icon = document.getElementById("theme-toggle-icon");
-  if (icon) icon.innerHTML = currentTheme() === "dark" ? "&#9728;&#65039;" : "&#127769;";
+  if (icon) icon.innerHTML = currentTheme() === "dark" ? THEME_ICON_SUN : THEME_ICON_MOON;
 }
 function toggleTheme() {
   const next = currentTheme() === "dark" ? "light" : "dark";
