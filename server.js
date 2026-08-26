@@ -553,7 +553,7 @@ app.post("/webhooks/lean", (req, res) => {
   try {
     if (event.type === "entity.created") {
       // NOTE: Lean's payload uses `id` for the entity identifier, not `entity_id`.
-      const { customer_id, id: entityId } = event.payload;
+      const { customer_id, id: entityId, permissions } = event.payload;
       // Find the user with this customer_id and store their entity_id
       const entry = Object.entries(store).find(
         ([, u]) => u.customerId === customer_id
@@ -562,32 +562,52 @@ app.post("/webhooks/lean", (req, res) => {
         const [foundAppUserId, user] = entry;
         // A customer can now produce TWO entities that both land here with
         // the same customer_id — Connect & Pay's full-permission
-        // Lean.connect() call, and Data Only's restricted one. The webhook
-        // payload alone doesn't say which; fetch the real Entity record
-        // (which does carry a `permissions` object) and classify by it
-        // instead of guessing. Done fire-and-forget so the webhook ack
-        // below isn't held up by this extra round trip — a fresh SSE
-        // snapshot goes out once classification resolves.
-        leanFetch(`/customers/v1/${customer_id}/entities/${entityId}`)
-          .then((entity) => {
-            const p = entity.permissions || {};
-            const isFullAccess = p.beneficiaries || p.standing_orders || p.direct_debits || p.scheduled_payments;
-            if (isFullAccess) {
-              user.entityId = entityId;
-              console.log(`[Webhook] Stored Connect & Pay entity_id ${entityId} for customer ${customer_id}`);
-            } else {
-              user.dataOnlyEntityId = entityId;
-              console.log(`[Webhook] Stored Data Only entity_id ${entityId} for customer ${customer_id}`);
-            }
-            pushStatusUpdate(foundAppUserId);
-          })
-          .catch((e) => {
-            // Can't classify — default to Connect & Pay's field, since
-            // that's the mechanism most of this app's payment demos need.
+        // Lean.connect() call, and Data Only's restricted one.
+        if (Array.isArray(permissions)) {
+          // entity.created's own payload already carries the permissions
+          // array requested for this entity (confirmed against a real
+          // payload) — classify synchronously from it. This used to always
+          // go through an extra GET /customers/v1/.../entities/{id} round
+          // trip instead, which raced Lean's own entity.data.refresh.updated
+          // burst that fires within milliseconds of this event: dataOnlyEntityId
+          // could still be unset when FINISHED arrived, or never get set at
+          // all if that round trip errored (its catch() defaulted to
+          // Connect & Pay). Classifying inline removes both failure modes.
+          const isFullAccess = ["beneficiaries", "standing_orders", "direct_debits", "scheduled_payments"].some((p) => permissions.includes(p));
+          if (isFullAccess) {
             user.entityId = entityId;
-            console.warn(`[Webhook] Could not classify entity ${entityId}, defaulting to Connect & Pay:`, e.message);
-            pushStatusUpdate(foundAppUserId);
-          });
+            console.log(`[Webhook] Stored Connect & Pay entity_id ${entityId} for customer ${customer_id}`);
+          } else {
+            user.dataOnlyEntityId = entityId;
+            console.log(`[Webhook] Stored Data Only entity_id ${entityId} for customer ${customer_id}`);
+          }
+          touchedAppUserId = foundAppUserId;
+        } else {
+          // Payload didn't carry a permissions array (unexpected shape) —
+          // fall back to fetching the entity record directly. Fire-and-forget
+          // so the webhook ack below isn't held up by this round trip; a
+          // fresh SSE snapshot goes out once classification resolves.
+          leanFetch(`/customers/v1/${customer_id}/entities/${entityId}`)
+            .then((entity) => {
+              const p = entity.permissions || {};
+              const isFullAccess = p.beneficiaries || p.standing_orders || p.direct_debits || p.scheduled_payments;
+              if (isFullAccess) {
+                user.entityId = entityId;
+                console.log(`[Webhook] Stored Connect & Pay entity_id ${entityId} for customer ${customer_id}`);
+              } else {
+                user.dataOnlyEntityId = entityId;
+                console.log(`[Webhook] Stored Data Only entity_id ${entityId} for customer ${customer_id}`);
+              }
+              pushStatusUpdate(foundAppUserId);
+            })
+            .catch((e) => {
+              // Can't classify — default to Connect & Pay's field, since
+              // that's the mechanism most of this app's payment demos need.
+              user.entityId = entityId;
+              console.warn(`[Webhook] Could not classify entity ${entityId}, defaulting to Connect & Pay:`, e.message);
+              pushStatusUpdate(foundAppUserId);
+            });
+        }
       } else {
         console.warn(`[Webhook] No user found for customer_id ${customer_id}`);
       }
