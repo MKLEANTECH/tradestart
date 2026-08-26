@@ -1518,7 +1518,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.1
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.2
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -1935,6 +1935,10 @@ function syncPhoneOverlayShift() {
   const drawer = document.getElementById("api-log-drawer");
   const width = apiLogOpen && drawer ? drawer.getBoundingClientRect().width : 0;
   overlay.style.paddingRight = width ? `${width}px` : "";
+  // The drawer shift moves the phone frame itself — if a Lean SDK widget is
+  // pinned to it (applyMobileSdkScope()), re-sync its position too, or it's
+  // left rendering wherever the phone frame used to be before this shift.
+  applyMobileSdkScope();
 }
 
 // Drag-to-resize from the drawer's left edge. No stored/remembered width —
