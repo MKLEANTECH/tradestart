@@ -35,7 +35,7 @@
   --border:#D3D4DB;     /* Neutral 7 (light) */
   --blue:#3B82F6; --blue-dark:#2563EB; --blue-light:#EFF6FF;
   --accent-on-dark:#3DD68C; /* accents ON dark chrome (ticker, API log drawer) */
-  --sky:#72DBF8; --sky-light:#C2F3FF;         /* Blue 3 / Blue 1 */
+  --sky:#0284C7; --sky-light:#C2F3FF;         /* Blue 3 / Blue 1 */
   --emerald:#3DD68C; --emerald-dark:#218154; --emerald-light:#DDF3E4; /* Lean brand green */
   --violet:#5B5BD6; --violet-light:#E0DFFE;   /* Iris 4 / Iris 1 */
   --amber:#FFC53D; --amber-light:#FFE7B3;     /* Amber 4 / Amber 1 */
@@ -1530,7 +1530,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.2
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.3
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -5935,6 +5935,10 @@ const RECON_STATUS_LABELS = {
   UNKNOWN:     { label: "Unknown",     icon: "?" },
 };
 
+// p.rail is stored as "OF" (the value server.js's payment records actually
+// use) — displayed as "AoF" since that's what the rest of the app calls it.
+const RAIL_LABELS = { OF: "AoF" };
+
 async function loadReconciliation() {
   if (!appUserId) return;
   const btn  = document.getElementById("recon-refresh-btn");
@@ -5986,7 +5990,7 @@ function renderReconciliation(payments) {
       : "";
     return `<tr>
       <td><div style="font-weight:600;font-variant-numeric:tabular-nums">AED ${fmt(p.amount)}</div><div style="font-size:11px;color:var(--text-3);margin-top:1px">${date}</div></td>
-      <td><span class="rail-pill ${p.rail}">${p.rail}</span></td>
+      <td><span class="rail-pill ${p.rail}">${RAIL_LABELS[p.rail] || p.rail}</span></td>
       <td><span class="recon-badge ${p.reconciliationStatus}">${st.icon} ${st.label}</span>${depositInfo}</td>
     </tr>`;
   }).join("");
