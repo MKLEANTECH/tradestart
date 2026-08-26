@@ -83,6 +83,15 @@ const store = {
 // more than one tab.
 const sseClients = {};
 
+// Resolves at READ time which entity dataOnlyEntityId currently points to
+// and looks up whatever refresh status has been recorded for THAT entity —
+// see the entity.data.refresh.updated handler in POST /webhooks/lean for why
+// this can't just be a flat field set once at webhook-arrival time.
+function dataOnlyRefreshStatusFor(user) {
+  if (!user.dataOnlyEntityId) return null;
+  return user.entityRefreshStatusByEntity?.[user.dataOnlyEntityId] || null;
+}
+
 // Single source of truth for "what does the frontend need to know about this
 // user" — used by both GET /api/status (one-shot, e.g. on page load) and the
 // SSE push (whenever a webhook updates something). Keeping this in one place
@@ -100,7 +109,7 @@ function buildStatusPayload(user) {
     // entity.data.refresh.updated (PENDING → FINISHED) is the real signal
     // that GET /data/v2/* will actually return something; see the webhook
     // handler below and pollForDataOnlyEntity() on the frontend.
-    dataOnlyRefreshStatus: user.dataOnlyRefreshStatus || null,
+    dataOnlyRefreshStatus: dataOnlyRefreshStatusFor(user),
     // OF fields
     consentId:         user.consentId,
     consentStatus:     user.consentStatus,
@@ -296,7 +305,7 @@ app.post("/api/init", async (req, res) => {
       }
 
       // Start with a blank slate
-      user = { customerId, entityId: null, dataOnlyEntityId: null, dataOnlyRefreshStatus: null, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
+      user = { customerId, entityId: null, dataOnlyEntityId: null, entityRefreshStatusByEntity: {}, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
       store[appUserId] = user;
 
       // After a restart recovery, try to restore entityId and paymentSourceId
@@ -364,7 +373,7 @@ app.post("/api/init", async (req, res) => {
       accessToken:       customerToken,
       entityId:          user.entityId,
       dataOnlyEntityId:  user.dataOnlyEntityId,
-      dataOnlyRefreshStatus: user.dataOnlyRefreshStatus || null,
+      dataOnlyRefreshStatus: dataOnlyRefreshStatusFor(user),
       paymentSourceId:   user.paymentSourceId,
       beneficiaryStatus: user.beneficiaryStatus,
       consentId:         user.consentId,
@@ -592,16 +601,31 @@ app.post("/webhooks/lean", (req, res) => {
     // consent covers is actually queryable. Only Data Only's card currently
     // reads bulk data (Connect & Pay never calls /data/v2/*), so this only
     // needs to track dataOnlyEntityId, not the CP entity.
+    //
+    // Recorded by raw entity_id into entityRefreshStatusByEntity rather than
+    // gated on entity_id === user.dataOnlyEntityId at write time — that
+    // comparison used to require entity.created's own async classification
+    // call (a couple hundred ms, fetching the entity's permissions to tell
+    // Data Only apart from Connect & Pay) to have already resolved. In
+    // practice Lean fires the entire PENDING...FINISHED burst for a fresh
+    // entity within a few seconds of entity.created, so it routinely won
+    // that race — FINISHED arrived and got silently dropped because
+    // dataOnlyEntityId was still null, and the frontend's wait would time
+    // out even though Lean had already sent everything needed. Storing
+    // unconditionally and resolving which entity dataOnlyEntityId points to
+    // at READ time (dataOnlyRefreshStatusFor() below) removes the race
+    // entirely instead of just widening the window.
     if (event.type === "entity.data.refresh.updated") {
       const { customer_id, id: refreshEntityId, entity_id, status } = event.payload || {};
       const targetEntityId = entity_id || refreshEntityId;
       const entry = Object.entries(store).find(([, u]) => u.customerId === customer_id);
       if (entry) {
         const [foundAppUserId, user] = entry;
-        if (!targetEntityId || targetEntityId === user.dataOnlyEntityId) {
-          user.dataOnlyRefreshStatus = status;
+        if (targetEntityId) {
+          if (!user.entityRefreshStatusByEntity) user.entityRefreshStatusByEntity = {};
+          user.entityRefreshStatusByEntity[targetEntityId] = status;
           touchedAppUserId = foundAppUserId;
-          console.log(`[Webhook] entity.data.refresh.updated for ${foundAppUserId} → ${status}`);
+          console.log(`[Webhook] entity.data.refresh.updated for ${foundAppUserId}, entity ${targetEntityId} → ${status}`);
         }
       } else {
         console.warn(`[Webhook] No user found for customer_id ${customer_id} (data refresh event)`);
