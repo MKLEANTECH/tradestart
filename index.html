@@ -1518,7 +1518,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.2
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.3
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -5988,12 +5988,35 @@ function applyMobileSdkScope() {
   document.body.style.setProperty("--phone-screen-height", r.height + "px");
 }
 
+// applyMobileSdkScope() takes a one-off snapshot — fine for instant layout
+// changes, but .phone-overlay animates its shift for the API log drawer
+// (transition: padding-right 0.22s ease), and a single snapshot taken the
+// instant that transition starts just captures the pre-shift position and
+// never catches up as the frame slides to its resting place. Rather than
+// chase every call site that can move the phone frame (drawer open/close/
+// resize/fullscreen, a fresh page load after a redirect return, ...), keep
+// resyncing every frame for as long as the phone preview is open — cheap,
+// and correct regardless of what's animating.
+let mobileSdkScopeRaf = null;
+function startMobileSdkScopeLoop() {
+  if (mobileSdkScopeRaf) return;
+  const tick = () => {
+    applyMobileSdkScope();
+    mobileSdkScopeRaf = requestAnimationFrame(tick);
+  };
+  mobileSdkScopeRaf = requestAnimationFrame(tick);
+}
+function stopMobileSdkScopeLoop() {
+  if (mobileSdkScopeRaf) cancelAnimationFrame(mobileSdkScopeRaf);
+  mobileSdkScopeRaf = null;
+}
+
 function openMobileApp() {
   mobileAppOpen = true;
   document.getElementById("phone-overlay").classList.add("open");
   document.body.classList.add("phone-widget-active");
   applyMobileSdkScope();
-  window.addEventListener("resize", applyMobileSdkScope);
+  startMobileSdkScopeLoop();
   switchMobileTab(mobileCurrentTab);
   // In case the API log drawer is already open/pinned when the phone opens.
   syncPhoneOverlayShift();
@@ -6003,7 +6026,7 @@ function closeMobileApp() {
   mobileAppOpen = false;
   document.getElementById("phone-overlay").classList.remove("open");
   document.body.classList.remove("phone-widget-active");
-  window.removeEventListener("resize", applyMobileSdkScope);
+  stopMobileSdkScopeLoop();
 }
 
 function switchMobileTab(tab) {
