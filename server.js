@@ -1615,11 +1615,24 @@ function requireDataOnlyEntity(req, res) {
   return user;
 }
 
+// Lean's Insights endpoints wrap their payload as { status, results_id,
+// message, insights: {...} } — a different envelope key than the rest of
+// this app's { status, data } convention (e.g. /api/dataonly/accounts above).
+// name-verification is the one exception and uses { status, data }. Unwrap
+// whichever key is present so the frontend renderers see the real payload.
+function unwrapLean(resp) {
+  if (resp && typeof resp === "object") {
+    if ("insights" in resp) return resp.insights;
+    if ("data" in resp) return resp.data;
+  }
+  return resp;
+}
+
 app.get("/api/insights/account-controls", async (req, res) => {
   const user = requireDataOnlyEntity(req, res);
   if (!user) return;
   try {
-    res.json(await leanFetch(`/insights/v3/account-controls?entity_id=${user.dataOnlyEntityId}`));
+    res.json(unwrapLean(await leanFetch(`/insights/v3/account-controls?entity_id=${user.dataOnlyEntityId}`)));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
@@ -1629,7 +1642,7 @@ app.get("/api/insights/cashflow-patterns", async (req, res) => {
   const user = requireDataOnlyEntity(req, res);
   if (!user) return;
   try {
-    res.json(await leanFetch(`/insights/v3/cashflow-patterns?entity_id=${user.dataOnlyEntityId}`));
+    res.json(unwrapLean(await leanFetch(`/insights/v3/cashflow-patterns?entity_id=${user.dataOnlyEntityId}`)));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
@@ -1639,7 +1652,7 @@ app.get("/api/insights/credit-assessments", async (req, res) => {
   const user = requireDataOnlyEntity(req, res);
   if (!user) return;
   try {
-    res.json(await leanFetch(`/insights/v3/credit-assessments?entity_id=${user.dataOnlyEntityId}`));
+    res.json(unwrapLean(await leanFetch(`/insights/v3/credit-assessments?entity_id=${user.dataOnlyEntityId}`)));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
@@ -1649,7 +1662,7 @@ app.get("/api/insights/credit-obligations", async (req, res) => {
   const user = requireDataOnlyEntity(req, res);
   if (!user) return;
   try {
-    res.json(await leanFetch(`/insights/v3/credit-obligations?entity_id=${user.dataOnlyEntityId}`));
+    res.json(unwrapLean(await leanFetch(`/insights/v3/credit-obligations?entity_id=${user.dataOnlyEntityId}`)));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
@@ -1659,7 +1672,7 @@ app.get("/api/insights/expenses", async (req, res) => {
   const user = requireDataOnlyEntity(req, res);
   if (!user) return;
   try {
-    res.json(await leanFetch(`/insights/v2/expenses?entity_id=${user.dataOnlyEntityId}`));
+    res.json(unwrapLean(await leanFetch(`/insights/v2/expenses?entity_id=${user.dataOnlyEntityId}`)));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
@@ -1669,7 +1682,7 @@ app.get("/api/insights/spending", async (req, res) => {
   const user = requireDataOnlyEntity(req, res);
   if (!user) return;
   try {
-    res.json(await leanFetch(`/insights/v3/spending?entity_id=${user.dataOnlyEntityId}`));
+    res.json(unwrapLean(await leanFetch(`/insights/v3/spending?entity_id=${user.dataOnlyEntityId}`)));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
@@ -1686,7 +1699,7 @@ app.get("/api/insights/income", async (req, res) => {
       method: "POST",
       body: JSON.stringify({ entity_id: user.dataOnlyEntityId }),
     });
-    res.json(result);
+    res.json(unwrapLean(result));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
@@ -1706,7 +1719,7 @@ app.post("/api/insights/name-verification", async (req, res) => {
       method: "POST",
       body: JSON.stringify({ entity_id: user.dataOnlyEntityId, full_name: fullName }),
     });
-    res.json(result);
+    res.json(unwrapLean(result));
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }

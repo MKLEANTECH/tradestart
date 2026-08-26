@@ -1518,7 +1518,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.0
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.1
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -3161,7 +3161,13 @@ function fmtInsightValue(v) {
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
 }
-function fmtCurrency(v) { return `AED ${fmt(v || 0)}`; }
+function fmtCurrency(v) {
+  // Insights money fields are inconsistently shaped across endpoints — some
+  // (income, expenses) are plain numbers, others (credit-assessments,
+  // credit-obligations, spending) are { currency, amount } objects.
+  const n = v && typeof v === "object" ? v.amount : v;
+  return `AED ${fmt(n || 0)}`;
+}
 function renderInsightKeyValueTable(obj) {
   const rows = Object.entries(obj || {}).map(([k, v]) => `<tr><td style="color:var(--text-3);">${humanizeInsightKey(k)}</td><td>${fmtInsightValue(v)}</td></tr>`).join("");
   return rows ? `<table class="recon-table"><tbody>${rows}</tbody></table>` : '<div class="tx-empty">No data available</div>';
@@ -3228,8 +3234,10 @@ function renderIncome(el, data) {
 
 function renderExpenses(el, data) {
   const total = data.total || {};
-  const breakdownContainer = total.breakdown;
-  const categories = Array.isArray(breakdownContainer) ? breakdownContainer : (breakdownContainer?.breakdowns || []);
+  // total.breakdown is an array of { by, breakdowns } groups (Lean supports
+  // breaking down by more than one dimension) — pick the "category" group.
+  const breakdownGroups = Array.isArray(total.breakdown) ? total.breakdown : [];
+  const categories = breakdownGroups.find((g) => g.by === "category")?.breakdowns || [];
   const rows = categories.map((c) => `
     <tr><td>${humanizeInsightKey(c.category)}</td><td style="text-align:right;">${c.count ?? "—"}</td><td style="text-align:right; font-weight:700;">${fmtCurrency(c.amount)}</td></tr>
   `).join("");
