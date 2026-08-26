@@ -565,6 +565,17 @@ footer a { color:var(--text-3); text-decoration:none; }
 .phone-content { flex:1; overflow-y:auto; padding:18px 18px 24px; }
 .mobile-page { display:none; flex-direction:column; gap:14px; }
 .mobile-page.active { display:flex; }
+
+/* Shown briefly right before the SDK hands off to the bank's own login page
+   — a real top-level browser navigation that can't be contained inside this
+   mockup (see applyMobileSdkScope()'s comment for why). This just makes that
+   hand-off read as an intentional transition instead of an abrupt jump,
+   mirroring how a native app briefly transitions before opening a system
+   browser view for the same step. */
+.m-redirect-transition { position:absolute; inset:0; z-index:60; background:var(--bg); display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; border-radius:44px; text-align:center; padding:32px; }
+.m-redirect-transition.active { display:flex; }
+.m-redirect-spinner { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--emerald); border-radius:50%; animation:spin 0.7s linear infinite; }
+.m-redirect-transition-text { font-size:14.5px; font-weight:600; color:var(--text-2); }
 .m-form-stack { display:flex; flex-direction:column; gap:14px; }
 
 /* Payment confirmation screen shown in place of the form on success */
@@ -1364,7 +1375,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <button class="btn btn-primary" style="max-width:280px;" onclick="switchPage('INTEGRATIONS'); openIntegrationDemo('DATAONLY');">Go to Data Only</button>
   </div>
 
-  <div id="insights-linked" style="display:none;">
+  <div id="insights-linked" class="col-stack" style="display:none;">
   <div class="card">
     <div class="card-eyebrow">Insights</div>
     <div class="card-title">Account eligibility</div>
@@ -1518,7 +1529,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.3
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.4
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -1749,7 +1760,19 @@ body.phone-widget-active #lean-sdk-iframe {
           </div>
 
           <p class="status-msg" id="mobile-status-profile"></p>
+
+          <div class="m-eyebrow">Payment history</div>
+          <div class="m-profile-row">
+            <span class="lbl">Consent for past SIP payments</span>
+            <button class="m-account-edit-btn" onclick="mobilePaymentHistoryConsents()">Payment History</button>
+          </div>
+          <p class="status-msg" id="mobile-status-payment-history"></p>
         </div>
+      </div>
+
+      <div class="m-redirect-transition" id="mobile-redirect-transition">
+        <span class="m-redirect-spinner"></span>
+        <div class="m-redirect-transition-text">Opening your bank securely&hellip;</div>
       </div>
 
       <div class="phone-bottom-nav">
@@ -3217,7 +3240,7 @@ async function loadInsightSection(endpoint, elId, renderFn) {
 }
 
 function renderAccountControls(el, data) {
-  const ac = data.account_controls || data;
+  const ac = data?.account_controls || data || {};
   const verdict = ac.verdict?.eligible;
   el.innerHTML = `
     <span class="recon-badge ${verdict ? "RECONCILED" : "UNRECEIVED"}" style="margin-bottom:14px; display:inline-flex;">${verdict ? "Eligible" : "Not eligible"}</span>
@@ -3226,8 +3249,8 @@ function renderAccountControls(el, data) {
 }
 
 function renderIncome(el, data) {
-  const salary    = data.salary?.total || {};
-  const nonSalary = data.non_salary?.total || {};
+  const salary    = data?.salary?.total || {};
+  const nonSalary = data?.non_salary?.total || {};
   el.innerHTML = `
     <div class="stat-row">
       <div class="stat-card"><div class="stat-label">Salary / month</div><div class="stat-value green">${fmtCurrency(salary.average_monthly_amount)}</div></div>
@@ -3237,7 +3260,7 @@ function renderIncome(el, data) {
 }
 
 function renderExpenses(el, data) {
-  const total = data.total || {};
+  const total = data?.total || {};
   // total.breakdown is an array of { by, breakdowns } groups (Lean supports
   // breaking down by more than one dimension) — pick the "category" group.
   const breakdownGroups = Array.isArray(total.breakdown) ? total.breakdown : [];
@@ -3254,7 +3277,7 @@ function renderExpenses(el, data) {
 let insightsSpendingData = null;
 let insightsSpendingView = "category";
 function renderSpending(el, data) {
-  insightsSpendingData = data.spending || data;
+  insightsSpendingData = data?.spending || data || {};
   renderSpendingView();
 }
 function setInsightsSpendingView(view) {
@@ -3279,7 +3302,7 @@ function renderSpendingView() {
 }
 
 function renderCashflowPatterns(el, data) {
-  const patterns = Array.isArray(data) ? data : (data.cashflow_patterns || data.patterns || []);
+  const patterns = Array.isArray(data) ? data : (data?.cashflow_patterns || data?.patterns || []);
   if (!patterns.length) { el.innerHTML = '<div class="tx-empty">No recurring patterns detected</div>'; return; }
   const rows = patterns.map((p) => {
     const status = p.regularity?.activity_status;
@@ -3297,7 +3320,7 @@ function renderCashflowPatterns(el, data) {
 }
 
 function renderCreditObligations(el, data) {
-  const co = data.credit_obligations || data;
+  const co = data?.credit_obligations || data || {};
   const breakdown = co.repayments?.breakdown || [];
   if (!breakdown.length) { el.innerHTML = '<div class="tx-empty">No existing credit obligations detected</div>'; return; }
   const rows = breakdown.map((b) => `
@@ -3310,7 +3333,7 @@ function renderCreditObligations(el, data) {
 }
 
 function renderCreditAssessments(el, data) {
-  const ca = data.credit_assessments || data;
+  const ca = data?.credit_assessments || data || {};
   const ci = ca.computed_indicators || {};
   const dbrOverCeiling = ci.dbr?.ceiling != null && ci.dbr?.rate > ci.dbr.ceiling;
   el.innerHTML = `
@@ -6137,6 +6160,17 @@ function waitForMobileConsentAuthorised() {
   );
 }
 
+// Shown right as the SDK's callback reports it's about to hand off to the
+// bank's own login page (payload.status === "REDIRECT") — see the CSS
+// comment on .m-redirect-transition for why this can't be more than a brief
+// transition rather than actually containing that step.
+function showMobileBankRedirectTransition() {
+  document.getElementById("mobile-redirect-transition").classList.add("active");
+}
+function hideMobileBankRedirectTransition() {
+  document.getElementById("mobile-redirect-transition").classList.remove("active");
+}
+
 async function mobileConnectOF() {
   if (!customerId) { setStatusEl("mobile-status-deposit", "Still initialising — please wait a moment.", "error"); return; }
 
@@ -6174,10 +6208,14 @@ async function mobileConnectOF() {
         if (payload.status === "SUCCESS") {
           setStatusEl("mobile-status-deposit", "Consent authorized! Verifying…", "ok");
           waitForMobileConsentAuthorised();
+        } else if (payload.status === "REDIRECT") {
+          showMobileBankRedirectTransition();
         } else if (payload.status === "CANCELLED") {
+          hideMobileBankRedirectTransition();
           setStatusEl("mobile-status-deposit", "Authorization cancelled.");
           setMobileOfCardLoading(false);
         } else {
+          hideMobileBankRedirectTransition();
           setStatusEl("mobile-status-deposit", `Authorization failed: ${payload.message || payload.status}`, "error");
           setMobileOfCardLoading(false);
         }
@@ -6272,10 +6310,12 @@ async function mobileSipTopUp() {
         if (payload.status === "SUCCESS" || payload.status === "PENDING") {
           mobileDepositSuccess(amount);
         } else if (payload.status === "REDIRECT") {
-          setStatusEl("mobile-status-deposit", "Redirecting to your bank…");
+          showMobileBankRedirectTransition();
         } else if (payload.status === "CANCELLED") {
+          hideMobileBankRedirectTransition();
           setStatusEl("mobile-status-deposit", "Payment cancelled.");
         } else {
+          hideMobileBankRedirectTransition();
           setStatusEl("mobile-status-deposit", `Payment failed: ${payload.message || payload.status}`, "error");
         }
         setMobileSipCardLoading(false);
@@ -6477,6 +6517,31 @@ function mobileManageConsents() {
       renderMobileProfile();
       renderMobileDeposits();
       if (currentPage === "AOF") renderAofTab();
+    },
+  });
+}
+
+// Payment-history consent management → Lean.manageConsents() scoped to
+// consent_type: "payment_history" — mobile counterpart to sipManageConsents()
+// above. Unlike mobileManageConsents() (the standing AoF consent), there's no
+// linking step here: Lean tracks a payment-history consent per customer for
+// every SIP checkout automatically, this just lets them view/manage it.
+function mobilePaymentHistoryConsents() {
+  if (!customerId) { setStatusEl("mobile-status-payment-history", "Still initialising — please wait a moment.", "error"); return; }
+
+  setStatusEl("mobile-status-payment-history", "Opening payment history…");
+  applyMobileSdkScope();
+
+  callLeanSdk("Lean.manageConsents() — mobile payment history", Lean.manageConsents.bind(Lean), {
+    app_token:    APP_TOKEN,
+    customer_id:  customerId,
+    access_token: accessToken,
+    consent_type: "payment_history",
+    sandbox:      true,
+
+    callback: (payload) => {
+      console.log("[Lean.manageConsents — mobile payment history] Callback payload:", payload);
+      setStatusEl("mobile-status-payment-history", "");
     },
   });
 }
