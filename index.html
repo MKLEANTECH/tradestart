@@ -1530,7 +1530,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.5
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.1.6
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2785,6 +2785,20 @@ function applyLiveStatus(data) {
     consentStatus = data.consentStatus;
     if (currentPage === "AOF") loadConsentDetails();
     if (mobileAppOpen) { renderMobileDeposits(); if (mobileCurrentTab === "PROFILE") renderMobileProfile(); }
+  }
+  // pollForDataOnlyEntity()/pollForDataOnlyRefresh() give up and show
+  // "webhook took too long" after their own timeouts — but this stream stays
+  // open and keeps getting pushed regardless of whether anything is still
+  // waiting on it. If the entity.created + entity.data.refresh.updated pair
+  // Data Only needs both eventually land after that timeout already fired,
+  // pick it up here instead of leaving the page stuck until a manual
+  // refresh — same live-update treatment every other field on this stream
+  // already gets.
+  if (data.dataOnlyEntityId && data.dataOnlyRefreshStatus === "FINISHED" && !dataOnlyEntityId) {
+    dataOnlyEntityId = data.dataOnlyEntityId;
+    setStatusEl("status-do-link", "");
+    setLoading("btn-link-do", false, "Connect for data");
+    renderDataOnlyCard();
   }
   if (currentPage === "PAYOUT") renderPayoutTab();
   if (currentPage === "REFUND") renderRefundList();
@@ -4505,8 +4519,7 @@ function openDiagramImageModal(demo) {
       <div class="diagram-image-source-note">From Lean's documentation — <a href="${DOCS_URLS[demo]}" target="_blank" rel="noopener">open the full page</a></div>`;
   } else {
     if (!cfg._wideSvg) cfg._wideSvg = renderWideFlowSvg(cfg.steps);
-    body.innerHTML = `${cfg._wideSvg}
-      <div class="diagram-image-source-note">Lean's docs don't have a diagram for this one — built to match their style, from the same flow shown on the page.</div>`;
+    body.innerHTML = cfg._wideSvg;
   }
   resetDiagramZoom();
   document.getElementById("diagram-image-overlay").classList.add("open");
