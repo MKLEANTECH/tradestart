@@ -130,7 +130,7 @@ header { background:var(--surface); border-bottom:1px solid var(--border); paddi
    subordinate level under the top nav rather than a second identical bar.
    Sticky (not the header itself — only asked for this row to stay put) so
    it's still reachable after scrolling into a long page's content. */
-.sub-nav { display:none; position:sticky; top:0; z-index:50; background:var(--surface-2); border-bottom:1px solid var(--border); padding:0 32px; flex-shrink:0; }
+.sub-nav { display:none; position:sticky; top:0; z-index:50; background:var(--surface-2); border-bottom:1px solid var(--border); flex-shrink:0; }
 .sub-nav.active { display:block; }
 .sub-nav-row { display:none; }
 .sub-nav-row.active { display:flex; }
@@ -1530,7 +1530,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.1
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.2
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2762,7 +2762,6 @@ async function refetchInitStatus() {
       body: JSON.stringify({ appUserId }),
     });
     const data = await res.json();
-    if (res.ok) { lastStatusSnapshot = data; applyLiveStatus(data); }
     return res.ok ? data : null;
   } catch {
     return null;
@@ -2788,8 +2787,24 @@ function waitForStatus(test, onMatch, onTimeout, timeoutMs = 30000) {
   waiter.timer = setTimeout(async () => {
     statusWaiters.delete(waiter);
     const data = await refetchInitStatus();
-    if (data && test(data)) onMatch(data);
-    else onTimeout();
+    // test()/onMatch() run BEFORE applyLiveStatus() touches any globals —
+    // same ordering as the live-push path above ("waiters get first look").
+    // Getting this backwards is a real bug that shipped once already: several
+    // test() predicates compare a pushed value against a global of the same
+    // name (e.g. data.tradingBalance > tradingBalance, to detect a deposit
+    // landing) — if applyLiveStatus(data) ran first, it overwrites that
+    // global with data's own value, so the comparison becomes data.x > data.x
+    // and is always false. Confirmed live: backend had correctly credited a
+    // SIP deposit, this fallback fetched that same data back, and the
+    // reordered-wrong version still fell through to onTimeout().
+    if (data) {
+      if (test(data)) onMatch(data);
+      else onTimeout();
+      lastStatusSnapshot = data;
+      applyLiveStatus(data);
+    } else {
+      onTimeout();
+    }
   }, timeoutMs);
   statusWaiters.add(waiter);
 }
@@ -6574,10 +6589,14 @@ function mobileManageConsents() {
   setStatusEl("mobile-status-profile", "Opening consent management…");
   applyMobileSdkScope();
 
-  // No consent_id — see the matching note in desktopManageConsents() above.
+  // Unlike desktopManageConsents() above, this Edit button lives directly
+  // under the one connected AoF account — scoped to consent_id so it opens
+  // straight into managing that specific consent instead of the widget's
+  // full Data / Payment / Payment History tab set.
   callLeanSdk("Lean.manageConsents() — mobile consent management", Lean.manageConsents.bind(Lean), {
     app_token:    APP_TOKEN,
     customer_id:  customerId,
+    consent_id:   consentId,
     access_token: accessToken,
     sandbox:      true,
 
