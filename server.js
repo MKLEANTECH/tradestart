@@ -2624,6 +2624,161 @@ app.get("/api/dev/schedules", async (req, res) => {
   }
 });
 
+/**
+ * GET /mobile-bridge
+ *
+ * Lean's LinkSDK is a JS/web widget (lean-link-loader.min.js) — there's no
+ * native iOS/Android SDK to call directly from TradeStartMobile. The
+ * standard way to use a web-based LinkSDK from a native app is a WebView
+ * hosting a small page that runs the real SDK and reports back to the app
+ * via postMessage — this route serves that page.
+ *
+ * The mobile app opens this in a WebView with ?flow=dataonly|aof|sip and
+ * ?appUserId=..., optionally &amount=... for sip. This page then:
+ *   1. Calls /api/init itself (same as the web app) to get customerId/accessToken.
+ *   2. Preps whatever the flow needs (create-consent for aof, payment-intent for sip).
+ *   3. Calls the matching Lean SDK function, with success/fail redirects
+ *      pointing BACK at this same URL (?flow=...&status=...&...).
+ *   4. On that redirect return, calls captureRedirect() and posts the final
+ *      result to the native side via window.ReactNativeWebView.postMessage.
+ * Every intermediate step also posts a status update, so the native app can
+ * show its own loading state instead of just the raw WebView.
+ */
+app.get("/mobile-bridge", (req, res) => {
+  res.set("Content-Type", "text/html");
+  res.send(`<!doctype html>
+<html><head><meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TradeStart</title>
+<script src="https://cdn.leantech.me/link/loader/prod/ae/latest/lean-link-loader.min.js"></script>
+<style>
+  body { margin:0; font-family:-apple-system,system-ui,sans-serif; background:#F9F9FB; color:#1C2024;
+         display:flex; align-items:center; justify-content:center; height:100vh; text-align:center; padding:24px; box-sizing:border-box; }
+  .msg { font-size:15px; color:#60646C; }
+  .spinner { width:28px; height:28px; border:3px solid #D3D4DB; border-top-color:#3DD68C; border-radius:50%;
+             animation:spin .8s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+  <div>
+    <div class="spinner"></div>
+    <div class="msg" id="msg">Loading…</div>
+  </div>
+<script>
+(function () {
+  var APP_TOKEN = "bf283b92-6f2f-4488-ace6-d89491ca2d52";
+  var qs = new URLSearchParams(window.location.search);
+  var flow = qs.get("flow");
+  var appUserId = qs.get("appUserId");
+  var amount = qs.get("amount");
+  var msgEl = document.getElementById("msg");
+
+  function report(payload) {
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+    }
+    if (payload.message) msgEl.textContent = payload.message;
+  }
+
+  function selfUrl(extra) {
+    var u = new URL(window.location.href.split("?")[0]);
+    u.searchParams.set("flow", flow);
+    u.searchParams.set("appUserId", appUserId);
+    if (amount) u.searchParams.set("amount", amount);
+    Object.keys(extra || {}).forEach(function (k) { u.searchParams.set(k, extra[k]); });
+    return u.toString();
+  }
+
+  async function api(path, opts) {
+    var res = await fetch(path, Object.assign({ headers: { "Content-Type": "application/json" } }, opts || {}));
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || "Request failed");
+    return data;
+  }
+
+  async function main() {
+    if (!flow || !appUserId) { report({ type: "error", message: "Missing flow or appUserId" }); return; }
+
+    report({ type: "status", message: "Initialising…" });
+    var init = await api("/api/init", { method: "POST", body: JSON.stringify({ appUserId: appUserId }) });
+    var customerId = init.customerId, accessToken = init.accessToken;
+
+    var status = qs.get("status");
+    if (status) {
+      // Returning from a bank redirect — close the loop with captureRedirect().
+      report({ type: "status", message: "Verifying…" });
+      var captureFn = (window.LeanV2 && window.LeanV2.captureRedirect) || (window.Lean && window.Lean.captureRedirect);
+      if (captureFn) {
+        captureFn.call(window.LeanV2 || window.Lean, {
+          app_token: APP_TOKEN, customer_id: customerId, access_token: accessToken, sandbox: true,
+          bank_identifier: qs.get("bank_identifier") || undefined,
+          consent_attempt_id: qs.get("consent_attempt_id") || undefined,
+          granular_status_code: qs.get("granular_status_code") || undefined,
+          status_additional_info: qs.get("status_additional_info") || undefined,
+          callback: function (payload) {
+            report({ type: "result", flow: flow, status: payload.status, message: payload.message || null });
+          },
+        });
+      } else {
+        report({ type: "result", flow: flow, status: status });
+      }
+      return;
+    }
+
+    if (flow === "dataonly") {
+      report({ type: "status", message: "Opening bank connection…" });
+      Lean.connect({
+        app_token: APP_TOKEN, customer_id: customerId,
+        permissions: ["identity", "accounts", "balance", "transactions"],
+        access_token: accessToken, sandbox: true,
+        success_redirect_url: selfUrl({ status: "SUCCESS" }),
+        fail_redirect_url: selfUrl({ status: "FAILED" }),
+        callback: function (payload) { report({ type: "result", flow: flow, status: payload.status, message: payload.message || null }); },
+      });
+    } else if (flow === "aof") {
+      var consent = await api("/api/of/consent?appUserId=" + encodeURIComponent(appUserId)).catch(function () { return {}; });
+      if (consent && consent.status === "AUTHORISED") {
+        // Already linked — this is just a one-tap deposit, no widget needed.
+        report({ type: "status", message: "Paying…" });
+        var payResult = await api("/api/of/pay", { method: "POST", body: JSON.stringify({ appUserId: appUserId, amount: Number(amount || 0) }) });
+        report({ type: "result", flow: flow, status: payResult.status || "PROCESSED", message: null });
+        return;
+      }
+      report({ type: "status", message: "Opening bank authorisation…" });
+      var created = await api("/api/of/create-consent", { method: "POST", body: JSON.stringify({ appUserId: appUserId }) });
+      var authFn = (window.LeanV2 && window.LeanV2.authorizeConsent) || (window.Lean && window.Lean.authorizeConsent);
+      authFn.call(window.LeanV2 || window.Lean, {
+        app_token: APP_TOKEN, customer_id: customerId, consent_id: created.consentId,
+        access_token: accessToken, sandbox: true,
+        success_redirect_url: selfUrl({ status: "SUCCESS" }),
+        fail_redirect_url: selfUrl({ status: "FAILED" }),
+        callback: function (payload) { report({ type: "result", flow: flow, status: payload.status, message: payload.message || null }); },
+      });
+    } else if (flow === "sip") {
+      report({ type: "status", message: "Creating payment intent…" });
+      var intent = await api("/api/sip/payment-intent", { method: "POST", body: JSON.stringify({ appUserId: appUserId, amount: Number(amount || 0), currency: "AED" }) });
+      report({ type: "status", message: "Opening bank authorisation…" });
+      var checkoutFn = (window.LeanV2 && window.LeanV2.checkout) || (window.Lean && window.Lean.checkout);
+      checkoutFn.call(window.LeanV2 || window.Lean, {
+        app_token: APP_TOKEN, payment_intent_id: intent.paymentIntentId,
+        access_token: intent.accessToken || accessToken, sandbox: true,
+        success_redirect_url: selfUrl({ status: "SUCCESS" }),
+        fail_redirect_url: selfUrl({ status: "FAILED" }),
+        risk_details: { transaction_indicators: { channel: "MOBILE" } },
+        callback: function (payload) { report({ type: "result", flow: flow, status: payload.status, message: payload.message || null }); },
+      });
+    } else {
+      report({ type: "error", message: "Unknown flow: " + flow });
+    }
+  }
+
+  main().catch(function (e) { report({ type: "error", message: e.message }); });
+})();
+</script>
+</body></html>`);
+});
+
 // ─── START ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
