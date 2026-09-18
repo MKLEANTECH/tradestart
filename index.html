@@ -579,6 +579,15 @@ footer a { color:var(--text-3); text-decoration:none; }
 .m-redirect-transition-text { font-size:14.5px; font-weight:600; color:var(--text-2); }
 .m-form-stack { display:flex; flex-direction:column; gap:14px; }
 
+/* Signup gate — same full-screen-overlay pattern as .m-redirect-transition
+   above, shown instead of the header/tab-bar chrome on first open until
+   mobileSignedUp is set. UI-only, no real auth — see mobileSignUp(). */
+.phone-signup-screen { position:absolute; inset:0; z-index:70; background:var(--bg); display:none; flex-direction:column; justify-content:center; padding:32px 24px; border-radius:44px; overflow-y:auto; }
+.phone-signup-screen.active { display:flex; }
+.phone-signup-mark { width:52px; height:52px; border-radius:16px; background:var(--emerald); color:#0B1220; font-weight:800; font-size:16px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
+.phone-signup-title { font-size:22px; font-weight:800; color:var(--text); margin-bottom:6px; }
+.phone-signup-subtitle { font-size:13px; color:var(--text-2); line-height:1.5; margin-bottom:24px; }
+
 /* Payment confirmation screen shown in place of the form on success */
 .m-success { display:flex; flex-direction:column; align-items:center; text-align:center; gap:8px; padding:36px 12px 12px; }
 .m-success-icon { width:60px; height:60px; border-radius:50%; background:var(--emerald-light); border:1.5px solid #A7F3D0; color:var(--emerald); font-size:28px; font-weight:700; display:flex; align-items:center; justify-content:center; margin-bottom:6px; }
@@ -593,7 +602,10 @@ footer a { color:var(--text-3); text-decoration:none; }
 .mtab-btn:hover { background:var(--surface-2); }
 
 .m-eyebrow { font-size:11px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-3); }
+.m-section-sub { font-size:12px; color:var(--text-2); line-height:1.5; margin:2px 0 10px; }
 .m-section-label { font-size:11px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:var(--text-3); margin-bottom:2px; }
+.m-section-label-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.m-change-method-link { background:none; border:none; padding:0; font-size:11.5px; font-weight:700; color:var(--emerald-dark); cursor:pointer; text-transform:none; letter-spacing:normal; }
 
 /* Portfolio */
 .m-balance-card { background:linear-gradient(135deg,var(--emerald-light) 0%,#F0FDF4 100%); border:1px solid #A7F3D0; border-radius:var(--radius); padding:18px 20px; }
@@ -1590,7 +1602,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.6
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.7
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -1707,6 +1719,22 @@ body.phone-widget-active #lean-sdk-iframe {
           </svg>
         </div>
       </div>
+      <div class="phone-signup-screen" id="mobile-signup-screen">
+        <div class="phone-signup-mark">TS</div>
+        <div class="phone-signup-title">TradeStart</div>
+        <div class="phone-signup-subtitle">Sign up to start trading — sandbox only, no real funds move. Just tell us who you are.</div>
+        <div class="m-section-label">Email</div>
+        <div class="input-wrap">
+          <input type="email" id="mobile-signup-email" class="text-field" placeholder="you@example.com" autocapitalize="none" />
+        </div>
+        <div class="m-section-label">Password</div>
+        <div class="input-wrap">
+          <input type="password" id="mobile-signup-password" class="text-field" placeholder="••••••••" />
+        </div>
+        <button class="btn btn-primary" style="margin-top:6px;" onclick="mobileSignUp()">Create account</button>
+        <p class="status-msg" id="mobile-status-signup"></p>
+      </div>
+
       <div class="phone-app-header"><div class="phone-app-title" id="mobile-app-title">Portfolio</div></div>
 
       <div class="phone-content">
@@ -1734,14 +1762,29 @@ body.phone-widget-active #lean-sdk-iframe {
               <input type="number" id="mobile-deposit-amount" placeholder="0.00" min="1" step="any" />
             </div>
 
-            <div class="m-section-label">Pay by Bank</div>
+            <div class="m-section-label-row" id="mobile-deposit-picker-label">
+              <div class="m-section-label" style="margin:0;">Pay by Bank</div>
+              <button class="m-change-method-link" id="mobile-change-method-link" style="display:none;" onclick="mobileShowPaymentPicker()">Change payment method</button>
+            </div>
+
+            <div class="m-method-card" id="mobile-sipcp-card" onclick="mobileSipCpPrimary()" role="button" tabindex="0">
+              <div class="m-method-icon" style="color:var(--violet);">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M9 12h6M8 8h1a3 3 0 000-6H6a3 3 0 000 6h1m7 8h1a3 3 0 010 6h-3a3 3 0 010-6h1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div class="m-method-info">
+                <div class="m-method-name" id="mobile-sipcp-name">Connect &amp; Pay</div>
+                <div class="m-method-sub" id="mobile-sipcp-sub">Connect your bank, verify it's yours, then pay</div>
+              </div>
+              <span class="m-method-badge" id="mobile-sipcp-badge" style="display:none;">Connected</span>
+            </div>
+
             <div class="m-method-card recommended" id="mobile-of-card" onclick="mobileHandleOfPrimary()" role="button" tabindex="0">
               <div class="m-method-icon" style="color:var(--emerald-dark);">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M3 10l9-6 9 6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9M10 10v9M14 10v9M19 10v9" stroke-width="1.8" stroke-linecap="round"/><path d="M3 19h18" stroke-width="1.8" stroke-linecap="round"/></svg>
               </div>
               <div class="m-method-info">
                 <div class="m-method-name-row">
-                  <span class="m-method-name" id="mobile-of-name">Connect Bank</span>
+                  <span class="m-method-name" id="mobile-of-name">Account on File</span>
                   <span class="m-recommended-tag">Recommended</span>
                 </div>
                 <div class="m-method-sub" id="mobile-of-sub">Connect once and pay with one tap</div>
@@ -1806,14 +1849,20 @@ body.phone-widget-active #lean-sdk-iframe {
         <!-- PROFILE -->
         <div class="mobile-page" id="mpage-PROFILE">
           <div class="m-profile-header">
-            <div class="m-profile-avatar">MK</div>
+            <div class="m-profile-avatar" id="mobile-profile-avatar">T</div>
             <div>
-              <div class="m-profile-name">Mohammed Kalandar</div>
-              <div class="m-profile-email">mohammed.ishrath@leantech.me</div>
+              <div class="m-profile-name" id="mobile-profile-name">Trader</div>
+              <div class="m-profile-email" id="mobile-profile-email"></div>
             </div>
           </div>
-          <div class="m-profile-row"><span class="lbl">Role</span><span class="val">Solutions Engineer</span></div>
-          <div class="m-profile-row"><span class="lbl">Company</span><span class="val">Lean Technologies</span></div>
+
+          <div class="m-eyebrow">Full name</div>
+          <div class="m-section-sub">Used to verify a connected bank account actually belongs to you (SIP Connect and Pay's AVS check).</div>
+          <div class="input-wrap">
+            <input type="text" id="mobile-profile-fullname" class="text-field" placeholder="e.g. Mohammed Kalandar" />
+          </div>
+          <button class="btn btn-secondary" style="margin-bottom:14px;" onclick="mobileSaveFullName()">Save name</button>
+          <p class="status-msg" id="mobile-status-fullname"></p>
 
           <div class="m-eyebrow">Connected accounts</div>
           <div id="mobile-profile-accounts">
@@ -2379,6 +2428,9 @@ let sipCpBankIdentifier = null;
 let sipCpAccountId      = null;
 let sipCpBankBalance    = null;
 let sipCpBankName       = null;
+// Mobile profile fields — UI-only signup/profile, no real auth.
+let profileEmail    = null;
+let profileFullName = null;
 // Set once loadDataOnlyAccounts() reads it — used only to pre-fill the
 // Insights name-verification field, purely a demo-UX convenience.
 let dataOnlyIdentityName = null;
@@ -2618,10 +2670,18 @@ async function init() {
     accessToken       = data.accessToken;
     entityId          = data.entityId;
     dataOnlyEntityId  = data.dataOnlyEntityId;
+    // sipCpEntityId/sipCpBankIdentifier were missing here entirely before —
+    // a fresh page load (e.g. returning from a bank redirect mid SIP Connect
+    // and Pay) never restored them, defeating the point of capturing
+    // bank_identifier server-side in the first place.
+    sipCpEntityId       = data.sipCpEntityId;
+    sipCpBankIdentifier = data.sipCpBankIdentifier;
     paymentSourceId   = data.paymentSourceId;
     beneficiaryStatus = data.beneficiaryStatus;
     consentId         = data.consentId;
     consentStatus     = data.consentStatus;
+    profileEmail      = data.email;
+    profileFullName   = data.profileFullName;
     tradingBalance    = data.tradingBalance || 0;
     payouts           = data.payouts || [];
     payoutBalance     = data.payoutBalance ?? 0;
@@ -2887,6 +2947,8 @@ function waitForStatus(test, onMatch, onTimeout, timeoutMs = 30000) {
 // separate "wait until done" transition it needs; it just wants the list and
 // balance to stay current, live).
 function applyLiveStatus(data) {
+  if (data.email !== undefined) profileEmail = data.email;
+  if (data.profileFullName !== undefined) profileFullName = data.profileFullName;
   if (data.tradingBalance !== undefined && data.tradingBalance !== tradingBalance) {
     tradingBalance = data.tradingBalance;
     document.getElementById("header-balance").style.display = "flex";
@@ -6343,18 +6405,30 @@ async function userReset() {
   }
 }
 
-// ─── MOBILE APP PREVIEW (Open Finance only) ────────────────────────────────
+// ─── MOBILE APP PREVIEW ─────────────────────────────────────────────────────
 // Phone-frame simulator opened from the header button. Reuses the SAME
-// globals (customerId, accessToken, consentId, consentStatus, appUserId,
-// tradingBalance, payoutBalance) as the desktop AoF/Payout tabs, so linking
-// or paying here updates those tabs too, and vice versa. Deliberately
-// restricted to the Open Finance rail: Lean.authorizeConsent() to connect,
-// the OF /api/of/pay rail (or a standalone SIP checkout) to fund,
-// /api/payout to withdraw, and Lean.manageConsents() to manage consent —
-// never RE's Lean.connect().
+// globals (customerId, accessToken, consentId, consentStatus, sipCpEntityId,
+// appUserId, tradingBalance, payoutBalance) as the desktop tabs, so linking
+// or paying here updates those tabs too, and vice versa. Three funding rails
+// on Deposits: Lean.authorizeConsent() (AoF, one-tap after first connect),
+// a standalone Lean.checkout() (SIP), and Lean.connect() + Lean.pay() (SIP
+// Connect and Pay) — this last one is the one RE-style connect() call this
+// preview makes, gated behind an AVS ownership check (see mobileSipCp*
+// functions below) since unlike Connect & Pay's desktop card it isn't
+// setting up a persistent payment method, just pre-selecting a bank for a
+// one-off SIP payment.
 
 let mobileAppOpen    = false;
 let mobileCurrentTab = "PORTFOLIO";
+
+// Signup gate — UI-only, no real auth (see mobileSignUp()). sessionStorage-
+// backed so it doesn't reappear on every phone-frame open within the same
+// browser session, same pattern as mobileHasSipPayment below.
+const MOBILE_SIGNED_UP_KEY = "ts_mobile_signed_up_v1";
+function loadMobileSignedUp() {
+  try { return sessionStorage.getItem(MOBILE_SIGNED_UP_KEY) === "true"; } catch { return false; }
+}
+let mobileSignedUp = loadMobileSignedUp();
 
 // Payment History (Lean's payment-history consent, via manageConsents()) is
 // only relevant once there's SIP history to show — hidden until a SIP
@@ -6434,9 +6508,45 @@ function openMobileApp() {
   document.body.classList.add("phone-widget-active");
   applyMobileSdkScope();
   startMobileSdkScopeLoop();
-  switchMobileTab(mobileCurrentTab);
+  if (mobileSignedUp) {
+    switchMobileTab(mobileCurrentTab);
+  } else {
+    document.getElementById("mobile-signup-screen").classList.add("active");
+  }
   // In case the API log drawer is already open/pinned when the phone opens.
   syncPhoneOverlayShift();
+}
+
+// Signup — UI-only, no real backend auth: the password field exists for
+// realism but is never sent anywhere or validated against anything stored.
+// Email becomes this session's display identity (saved server-side via
+// POST /api/profile, same route the Profile tab's Full name field uses) —
+// the underlying appUserId/customerId session is unchanged, this doesn't
+// create a new Lean customer.
+async function mobileSignUp() {
+  const email = document.getElementById("mobile-signup-email").value.trim();
+  const password = document.getElementById("mobile-signup-password").value;
+  if (!email) { setStatusEl("mobile-status-signup", "Enter an email to continue.", "error"); return; }
+  if (!password) { setStatusEl("mobile-status-signup", "Enter a password to continue.", "error"); return; }
+  if (!customerId) { setStatusEl("mobile-status-signup", "Still initialising — please wait a moment.", "error"); return; }
+
+  setStatusEl("mobile-status-signup", "Creating your account…");
+  try {
+    const res = await fetch(`${BACKEND}/api/profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId, email }),
+    });
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || "Could not create account");
+
+    mobileSignedUp = true;
+    try { sessionStorage.setItem(MOBILE_SIGNED_UP_KEY, "true"); } catch {}
+    document.getElementById("mobile-signup-screen").classList.remove("active");
+    switchMobileTab(mobileCurrentTab);
+  } catch (err) {
+    setStatusEl("mobile-status-signup", `Error: ${err.message}`, "error");
+  }
 }
 
 function closeMobileApp() {
@@ -6487,27 +6597,64 @@ function renderMobilePortfolio() {
 // ── Deposits — Open Finance only ────────────────────────────────────────────
 // "Recommended" (in the card markup) is a standing label — always on,
 // regardless of connection state. This badge is purely connection status.
+// Deposits shows three "Pay by Bank" methods the first time (SIP Connect and
+// Pay, Account on File, Single Instant Payment) — a genuine picker, per the
+// requirement that all three be offered up front. Once AoF is AUTHORISED,
+// its one-tap payment becomes the default view (matching the existing,
+// already-working "next time, one tap" behavior) with a "Change payment
+// method" link back to the full picker, rather than forcing the picker on
+// every single deposit.
+let mobileForcePicker = false;
+function mobileShowPaymentPicker() {
+  mobileForcePicker = true;
+  renderMobileDeposits();
+}
+
 function renderMobileDeposits() {
-  const badge   = document.getElementById("mobile-of-badge");
-  const sipCard = document.getElementById("mobile-sip-card");
-  const nameEl  = document.getElementById("mobile-of-name");
-  const subEl   = document.getElementById("mobile-of-sub");
-  if (consentStatus === "AUTHORISED") {
+  const badge      = document.getElementById("mobile-of-badge");
+  const sipCard    = document.getElementById("mobile-sip-card");
+  const sipcpCard  = document.getElementById("mobile-sipcp-card");
+  const sipcpBadge = document.getElementById("mobile-sipcp-badge");
+  const sipcpName  = document.getElementById("mobile-sipcp-name");
+  const sipcpSub   = document.getElementById("mobile-sipcp-sub");
+  const nameEl     = document.getElementById("mobile-of-name");
+  const subEl      = document.getElementById("mobile-of-sub");
+  const changeLink = document.getElementById("mobile-change-method-link");
+
+  // SIP Connect and Pay's own connected/not-yet-connected sub-state is
+  // independent of AoF's — a customer could set up either or both.
+  if (sipCpEntityId) {
+    sipcpBadge.style.display = "";
+    sipcpBadge.textContent = "Connected";
+    sipcpName.textContent = sipCpBankName || "Bank connected";
+    sipcpSub.textContent = "Tap to pay";
+  } else {
+    sipcpBadge.style.display = "none";
+    sipcpName.textContent = "Connect & Pay";
+    sipcpSub.textContent = "Connect your bank, verify it's yours, then pay";
+  }
+
+  const aofReady = consentStatus === "AUTHORISED";
+  if (aofReady && !mobileForcePicker) {
     badge.textContent = "Connected";
     badge.className = "m-method-badge linked";
     badge.style.display = "";
     nameEl.textContent = "One Tap Payment";
     subEl.textContent = "Free service charges";
-    // Once the user has connected & consented, Pay by Bank is the only
-    // deposit path shown — SIP was just the first-time, no-consent option.
+    // Once AoF is connected, its one-tap payment is the default view — the
+    // other two rails are still reachable via "Change payment method".
     sipCard.style.display = "none";
+    sipcpCard.style.display = "none";
+    changeLink.style.display = "";
   } else {
     // No badge before connecting — "Not connected" was just noise; the
-    // card's own "Connect Bank" label already says what it does.
+    // card's own label already says what it does.
     badge.style.display = "none";
-    nameEl.textContent = "Connect Bank";
+    nameEl.textContent = "Account on File";
     subEl.textContent = "Connect once and pay with one tap";
     sipCard.style.display = "flex";
+    sipcpCard.style.display = "flex";
+    changeLink.style.display = aofReady ? "" : "none";
   }
 }
 
@@ -6764,6 +6911,204 @@ async function handleMobileSipRedirectReturn(redirectParams = {}) {
   );
 }
 
+// ── SIP Connect and Pay (mobile) — Lean.connect() + AVS + Lean.pay() ───────
+// Same underlying flow/backend as the desktop SIP Connect and Pay card
+// (startLinkSipCp()/handleSipCpPay() above) — see server.js for why
+// entity.created classification needs POST /api/sipcp/connect-init called
+// first, and why bank_identifier is captured server-side rather than held
+// in a JS variable across the bank redirect.
+function mobileSipCpPrimary() {
+  if (sipCpEntityId) mobileSipCpPay();
+  else mobileSipCpConnect();
+}
+
+// Same on/off loading treatment as setMobileOfCardLoading()/
+// setMobileSipCardLoading() above, for the SIP Connect and Pay card.
+function setMobileSipCpCardLoading(loading, subText) {
+  const card = document.getElementById("mobile-sipcp-card");
+  const sub  = document.getElementById("mobile-sipcp-sub");
+  if (loading) {
+    card.classList.add("loading");
+    sub.textContent = subText;
+  } else {
+    card.classList.remove("loading");
+    renderMobileDeposits();
+  }
+}
+
+async function mobileSipCpConnect() {
+  if (!customerId) { setStatusEl("mobile-status-deposit", "Still initialising — please wait a moment.", "error"); return; }
+  // AVS needs an independent reference name — the connected account's own
+  // name can't verify itself. Send the user to set it in Profile first
+  // rather than let the AVS call fail with a confusing error.
+  if (!profileFullName) {
+    setStatusEl("mobile-status-deposit", "Add your full name in Profile first — needed to verify a connected account is yours.", "error");
+    switchMobileTab("PROFILE");
+    return;
+  }
+
+  setMobileSipCpCardLoading(true, "Connecting…");
+  setStatusEl("mobile-status-deposit", "Opening your bank connection…");
+
+  try {
+    await fetch(`${BACKEND}/api/sipcp/connect-init`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ appUserId }),
+    });
+  } catch (err) {
+    setStatusEl("mobile-status-deposit", "Could not start linking — try again.", "error");
+    setMobileSipCpCardLoading(false);
+    return;
+  }
+
+  applyMobileSdkScope();
+  callLeanSdk("Lean.connect() — mobile SIP Connect and Pay", Lean.connect.bind(Lean), {
+    app_token:              APP_TOKEN,
+    customer_id:            customerId,
+    permissions:            ["identity", "accounts", "balance", "payments"],
+    payment_destination_id: PAYMENT_DESTINATION_ID,
+    access_token:           accessToken,
+    sandbox:                true,
+
+    callback: async (payload) => {
+      console.log("[Lean.connect] mobile SIP Connect and Pay callback:", payload);
+      if (payload.status === "SUCCESS") {
+        setStatusEl("mobile-status-deposit", "Bank linked! Verifying your account…", "ok");
+        await mobilePollSipCpEntity();
+      } else if (payload.status === "CANCELLED") {
+        setStatusEl("mobile-status-deposit", "Connection cancelled.");
+        setMobileSipCpCardLoading(false);
+      } else {
+        setStatusEl("mobile-status-deposit", `Connection failed: ${payload.message || payload.status}`, "error");
+        setMobileSipCpCardLoading(false);
+      }
+    },
+  });
+}
+
+function mobilePollSipCpEntity() {
+  waitForStatus(
+    (d) => !!d.sipCpEntityId,
+    (d) => {
+      sipCpEntityId = d.sipCpEntityId;
+      mobilePollSipCpRefresh();
+    },
+    () => {
+      setStatusEl("mobile-status-deposit", "Webhook took too long — try refreshing the page.", "error");
+      setMobileSipCpCardLoading(false);
+    },
+  );
+}
+
+function mobilePollSipCpRefresh() {
+  waitForStatus(
+    (d) => d.sipCpRefreshStatus === "FINISHED",
+    async (d) => {
+      sipCpBankIdentifier = d.sipCpBankIdentifier;
+      await mobileVerifySipCpAccount();
+    },
+    () => {
+      setStatusEl("mobile-status-deposit", "Still fetching your account — try again in a moment.", "error");
+      setMobileSipCpCardLoading(false);
+    },
+    60000,
+  );
+}
+
+// Fetches the connected account, then runs Lean's AVS (confirmation of
+// payee) check against the user's own profileFullName — never the
+// account's own name, which would make the check circular and meaningless.
+async function mobileVerifySipCpAccount() {
+  setStatusEl("mobile-status-deposit", "Fetching your account…");
+  try {
+    const res  = await fetch(`${BACKEND}/api/sipcp/accounts?appUserId=${appUserId}`);
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || "Account fetch failed");
+
+    const account = (data.accounts || [])[0];
+    if (!account) throw new Error("No accounts found");
+
+    sipCpAccountId   = account.accountId;
+    sipCpBankName    = account.bankName;
+    sipCpBankBalance = account.amount;
+
+    setStatusEl("mobile-status-deposit", "Verifying the account belongs to you…");
+    const avsRes  = await fetch(`${BACKEND}/api/sipcp/verify-account`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ appUserId, iban: account.iban }),
+    });
+    const avsData = await safeJson(avsRes);
+    if (!avsRes.ok) throw new Error(avsData.error || "Verification failed");
+
+    if (avsData.matchType === "NO_MATCH") {
+      setStatusEl("mobile-status-deposit", "This account doesn't appear to belong to you — try connecting a different account.", "error");
+      setMobileSipCpCardLoading(false);
+      return;
+    }
+
+    setStatusEl("mobile-status-deposit", "Bank connected! You can now pay.", "ok");
+    setMobileSipCpCardLoading(false);
+  } catch (err) {
+    setStatusEl("mobile-status-deposit", `Error: ${err.message}`, "error");
+    setMobileSipCpCardLoading(false);
+  }
+}
+
+async function mobileSipCpPay() {
+  const amount = parseFloat(document.getElementById("mobile-deposit-amount").value);
+  if (!amount || amount <= 0) { setStatusEl("mobile-status-deposit", "Enter a deposit amount to continue.", "error"); return; }
+  if (!sipCpAccountId) { setStatusEl("mobile-status-deposit", "Account details not loaded yet — try refreshing the page.", "error"); return; }
+
+  setMobileSipCpCardLoading(true, "Paying…");
+  setStatusEl("mobile-status-deposit", "Creating payment intent…");
+
+  try {
+    const intentRes = await fetch(`${BACKEND}/api/sip/payment-intent`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ appUserId, amount, currency: "AED" }),
+    });
+    const intentData = await intentRes.json();
+    if (!intentRes.ok) throw new Error(intentData.error || "Payment intent failed");
+    if (intentData.accessToken) accessToken = intentData.accessToken;
+
+    setStatusEl("mobile-status-deposit", "Opening bank authorisation…");
+    applyMobileSdkScope();
+
+    callLeanSdk("Lean.pay() — mobile SIP Connect and Pay", Lean.pay.bind(Lean), {
+      app_token:            APP_TOKEN,
+      payment_intent_id:    intentData.paymentIntentId,
+      account_id:           sipCpAccountId,
+      bank_identifier:      sipCpBankIdentifier,
+      access_token:         accessToken,
+      sandbox:              true,
+      // Same plain same-page redirect as depositViaSipCp() on desktop —
+      // Lean.pay() resolves via this callback directly, unlike checkout()'s
+      // query-param + captureRedirect() dance used elsewhere on this page.
+      success_redirect_url: window.location.origin + window.location.pathname,
+      fail_redirect_url:    window.location.origin + window.location.pathname,
+      risk_details: { transaction_indicators: { channel: "MOBILE" } },
+
+      callback: (payload) => {
+        console.log("[Lean.pay] mobile SIP Connect and Pay callback:", payload);
+        if (payload.status === "SUCCESS" || payload.status === "PENDING") {
+          mobileDepositSuccess(amount, "SIPCP");
+        } else if (payload.status === "CANCELLED") {
+          setStatusEl("mobile-status-deposit", "Payment cancelled.");
+        } else {
+          setStatusEl("mobile-status-deposit", `Payment failed: ${payload.message || payload.status}`, "error");
+        }
+        setMobileSipCpCardLoading(false);
+      },
+    });
+  } catch (err) {
+    setStatusEl("mobile-status-deposit", `Error: ${err.message}`, "error");
+    setMobileSipCpCardLoading(false);
+  }
+}
+
 function mobileDepositSuccess(amount, source) {
   tradingBalance += amount;
   document.getElementById("header-balance").style.display = "flex";
@@ -6800,6 +7145,10 @@ function resetMobileDeposit() {
   setStatusEl("mobile-status-deposit", "");
   document.getElementById("mobile-deposit-success").style.display = "none";
   document.getElementById("mobile-deposit-form").style.display = "flex";
+  // Back to the one-tap default view (if a one-tap method exists) rather
+  // than staying pinned on the picker after a completed deposit.
+  mobileForcePicker = false;
+  renderMobileDeposits();
 }
 
 // ── Withdraw — same Payouts function/backend as the desktop Payout tab ─────
@@ -6864,6 +7213,18 @@ function updateMobilePaymentHistoryVisibility() {
 // ── Profile — identity from the OF consent + consent management ────────────
 async function renderMobileProfile() {
   updateMobilePaymentHistoryVisibility();
+
+  const nameEl  = document.getElementById("mobile-profile-name");
+  const emailEl = document.getElementById("mobile-profile-email");
+  const avatarEl = document.getElementById("mobile-profile-avatar");
+  const nameInput = document.getElementById("mobile-profile-fullname");
+  nameEl.textContent  = profileFullName || "Trader";
+  emailEl.textContent = profileEmail || "";
+  avatarEl.textContent = (profileFullName || profileEmail || "T").trim().charAt(0).toUpperCase();
+  // Don't clobber in-progress typing if this re-render fires while the user
+  // is mid-edit (e.g. a live status push from another tab).
+  if (document.activeElement !== nameInput) nameInput.value = profileFullName || "";
+
   const accountsBox = document.getElementById("mobile-profile-accounts");
   if (!consentId) {
     accountsBox.innerHTML = '<div class="tx-empty">Connect your bank via Open Finance to see connected accounts.</div>';
@@ -6892,6 +7253,32 @@ async function renderMobileProfile() {
       </div>` : '<div class="tx-empty">Connect your bank via Open Finance to see connected accounts.</div>';
   } catch (err) {
     accountsBox.innerHTML = `<div class="tx-empty">Could not load connected accounts: ${err.message}</div>`;
+  }
+}
+
+// Saved server-side (not just held in a JS variable) because it's the AVS
+// reference name SIP Connect and Pay needs, and that flow's connect step
+// involves a bank redirect + page reload — see the matching note on
+// POST /api/profile in server.js for the full reasoning.
+async function mobileSaveFullName() {
+  const fullName = document.getElementById("mobile-profile-fullname").value.trim();
+  if (!fullName) { setStatusEl("mobile-status-fullname", "Enter your full name to continue.", "error"); return; }
+
+  setStatusEl("mobile-status-fullname", "Saving…");
+  try {
+    const res = await fetch(`${BACKEND}/api/profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appUserId, fullName }),
+    });
+    const data = await safeJson(res);
+    if (!res.ok) throw new Error(data.error || "Could not save name");
+
+    profileFullName = data.profileFullName;
+    setStatusEl("mobile-status-fullname", "Saved.", "ok");
+    renderMobileProfile();
+  } catch (err) {
+    setStatusEl("mobile-status-fullname", `Error: ${err.message}`, "error");
   }
 }
 
