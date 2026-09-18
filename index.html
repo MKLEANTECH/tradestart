@@ -1602,7 +1602,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.7
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.8
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2624,9 +2624,10 @@ async function captureOfRedirect(redirectParams = {}, label = "AoF") {
 
 // ─── INIT ───────────────────────────────────────────────────────────────────
 async function init() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const ofStatus  = urlParams.get("of_status");
-  const sipStatus = urlParams.get("sip_status");
+  const urlParams   = new URLSearchParams(window.location.search);
+  const ofStatus    = urlParams.get("of_status");
+  const sipStatus   = urlParams.get("sip_status");
+  const sipcpStatus = urlParams.get("sipcp_status");
   // Set by mobileConnectOF()/mobileSipTopUp() on their redirect URLs — tells
   // us, once the browser comes back from the bank, whether to resume this
   // flow on the desktop AoF/SIP tab or reopen the phone overlay instead.
@@ -2655,7 +2656,7 @@ async function init() {
   // replaces the old per-flow polling loops.
   connectStatusStream();
 
-  if (ofStatus || sipStatus) window.history.replaceState({}, "", window.location.pathname);
+  if (ofStatus || sipStatus || sipcpStatus) window.history.replaceState({}, "", window.location.pathname);
 
   try {
     const res = await fetch(`${BACKEND}/api/init`, {
@@ -2817,6 +2818,40 @@ async function init() {
       switchPage("SIP");
       await handleSipRedirectReturn(sipRedirectParams);
       setStatus("sip-standalone", "SIP payment failed or was cancelled.", "error");
+      return;
+    }
+    if (sipcpStatus === "SUCCESS") {
+      if (isMobileRedirect) {
+        openMobileApp();
+        switchMobileTab("DEPOSITS");
+        applyMobileSdkScope();
+        await captureOfRedirect(sipRedirectParams, "mobile SIP Connect and Pay");
+        setMobileSipCpCardLoading(true, "Verifying…");
+        setStatusEl("mobile-status-deposit", "Bank linked! Verifying your account…", "ok");
+        mobilePollSipCpEntity();
+        return;
+      }
+      switchPage("INTEGRATIONS");
+      openIntegrationDemo("SIPCP");
+      await captureOfRedirect(sipRedirectParams, "SIP Connect and Pay");
+      setLoading("btn-link-sipcp", true, "Connect bank");
+      setStatusEl("status-sipcp-link", "Bank linked! Fetching your account…", "ok");
+      pollForSipCpEntity();
+      return;
+    }
+    if (sipcpStatus === "FAILED") {
+      if (isMobileRedirect) {
+        openMobileApp();
+        switchMobileTab("DEPOSITS");
+        applyMobileSdkScope();
+        await captureOfRedirect(sipRedirectParams, "mobile SIP Connect and Pay");
+        setStatusEl("mobile-status-deposit", "Bank connection failed or was cancelled. Try again.", "error");
+        return;
+      }
+      switchPage("INTEGRATIONS");
+      openIntegrationDemo("SIPCP");
+      await captureOfRedirect(sipRedirectParams, "SIP Connect and Pay");
+      setStatusEl("status-sipcp-link", "Bank connection failed or was cancelled. Try again.", "error");
       return;
     }
 
@@ -3084,6 +3119,15 @@ async function startLinkSipCp() {
     payment_destination_id: PAYMENT_DESTINATION_ID,
     access_token:           accessToken,
     sandbox:                true,
+    // Confirmed via Lean's own backend logs (400 on POST
+    // /link/v1/accounts-access-consents: "successRedirectUrl"/
+    // "failureRedirectUrl" must not be blank) — the "accounts" data
+    // permission here routes through the same UAE Open Finance consent
+    // creation path AoF's authorizeConsent() uses, which mandates real
+    // redirect URLs by regulation. Omitting them (as Connect & Pay's older
+    // connect() call does) fails outright for this permission combination.
+    success_redirect_url:  `${REDIRECT_BASE}?sipcp_status=SUCCESS&ts_user_id=${appUserId}`,
+    fail_redirect_url:     `${REDIRECT_BASE}?sipcp_status=FAILED&ts_user_id=${appUserId}`,
 
     callback: async (payload) => {
       console.log("[Lean.connect] SIP Connect and Pay callback payload:", payload);
@@ -6970,6 +7014,8 @@ async function mobileSipCpConnect() {
     payment_destination_id: PAYMENT_DESTINATION_ID,
     access_token:           accessToken,
     sandbox:                true,
+    success_redirect_url:  `${REDIRECT_BASE}?sipcp_status=SUCCESS&ts_user_id=${appUserId}&via=mobile`,
+    fail_redirect_url:     `${REDIRECT_BASE}?sipcp_status=FAILED&ts_user_id=${appUserId}&via=mobile`,
 
     callback: async (payload) => {
       console.log("[Lean.connect] mobile SIP Connect and Pay callback:", payload);
