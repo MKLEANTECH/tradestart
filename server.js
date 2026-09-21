@@ -70,8 +70,6 @@ const store = {
   //   sipCpEntityId, sipCpBankIdentifier, pendingEntityKind (transient, see entity.created handler),
   //   -- OF fields --
   //   consentId, consentStatus,
-  //   -- Mobile profile fields (UI-only signup/profile, no real auth) --
-  //   email, profileFullName (used as the AVS reference name for SIP Connect and Pay),
   //   -- shared --
   //   payments: [{ id, amount, currency, rail, initiatedAt, status }]
   // }
@@ -129,10 +127,6 @@ function buildStatusPayload(user) {
     // OF fields
     consentId:         user.consentId,
     consentStatus:     user.consentStatus,
-    // Mobile profile fields — UI-only, no real auth. profileFullName is the
-    // AVS reference name for SIP Connect and Pay's account-ownership check.
-    email:             user.email,
-    profileFullName:   user.profileFullName,
     // shared
     tradingBalance:    user.tradingBalance,
     payoutBalance:     user.payoutBalance ?? PAYOUT_STARTING_BALANCE,
@@ -325,7 +319,7 @@ app.post("/api/init", async (req, res) => {
       }
 
       // Start with a blank slate
-      user = { customerId, entityId: null, dataOnlyEntityId: null, sipCpEntityId: null, sipCpBankIdentifier: null, pendingEntityKind: null, entityRefreshStatusByEntity: {}, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, email: null, profileFullName: null, payments: [], payouts: [], schedules: [], refunds: [] };
+      user = { customerId, entityId: null, dataOnlyEntityId: null, sipCpEntityId: null, sipCpBankIdentifier: null, pendingEntityKind: null, entityRefreshStatusByEntity: {}, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
       store[appUserId] = user;
 
       // After a restart recovery, try to restore entityId and paymentSourceId
@@ -408,37 +402,24 @@ app.post("/api/init", async (req, res) => {
     const customerToken = await getCustomerScopedToken(user.customerId);
 
     res.json({
-      customerId:  user.customerId,
-      accessToken: customerToken,
-      ...buildStatusPayload(user),
+      customerId:        user.customerId,
+      accessToken:       customerToken,
+      entityId:          user.entityId,
+      dataOnlyEntityId:  user.dataOnlyEntityId,
+      dataOnlyRefreshStatus: dataOnlyRefreshStatusFor(user),
+      paymentSourceId:   user.paymentSourceId,
+      beneficiaryStatus: user.beneficiaryStatus,
+      consentId:         user.consentId,
+      consentStatus:     user.consentStatus,
+      tradingBalance:    user.tradingBalance,
+      payoutBalance:     user.payoutBalance ?? PAYOUT_STARTING_BALANCE,
+      payouts:           user.payouts || [],
+      schedules:         user.schedules || [],
+      refunds:           user.refunds || [],
     });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
-});
-
-/**
- * POST /api/profile
- *
- * UI-only mobile signup/profile fields — no real auth. Backs both the mobile
- * signup gate (email) and the Profile tab's Full name field (fullName).
- * fullName is persisted server-side (not just held in frontend JS state)
- * because it's the AVS reference name SIP Connect and Pay needs, and that
- * flow survives a bank-redirect page reload — client-only state doesn't
- * (see the bank_identifier note on SIP Connect and Pay's entity.created
- * handler for the exact same lesson already learned in this codebase).
- *
- * Body: { appUserId, email?, fullName? } — only provided fields are updated.
- */
-app.post("/api/profile", (req, res) => {
-  const { appUserId, email, fullName } = req.body;
-  const user = store[appUserId];
-  if (!user) return res.status(400).json({ error: "User not initialised" });
-
-  if (email !== undefined) user.email = email || null;
-  if (fullName !== undefined) user.profileFullName = fullName || null;
-
-  res.json({ email: user.email, profileFullName: user.profileFullName });
 });
 
 /**
@@ -1791,46 +1772,6 @@ app.get("/api/sipcp/accounts", async (req, res) => {
     }));
 
     res.json({ bankIdentifier: user.sipCpBankIdentifier, accounts: enriched });
-  } catch (err) {
-    res.status(err.status || 500).json({ error: err.message, detail: err.body });
-  }
-});
-
-/**
- * POST /api/sipcp/verify-account
- *
- * SIP Connect and Pay: confirms the connected IBAN actually belongs to the
- * signed-up user, via Lean's Account Verification Service (confirmation of
- * payee) — POST /verifications/v1/accounts. Checking the account's OWN name
- * against itself would be circular and always "match", so this needs an
- * independent reference name: the user's own profileFullName (set in the
- * mobile Profile tab), never the account's own account_holder_name.
- *
- * Body: { appUserId, iban }
- * Returns: { matchType, score } from Lean's verifications.matching.
- */
-app.post("/api/sipcp/verify-account", async (req, res) => {
-  try {
-    const { appUserId, iban } = req.body;
-    const user = store[appUserId];
-    if (!user) return res.status(400).json({ error: "User not initialised" });
-    if (!user.profileFullName) {
-      return res.status(400).json({ error: "No full name set — add your full name in Profile before connecting a bank." });
-    }
-    if (!iban) return res.status(400).json({ error: "iban required" });
-
-    const result = await leanFetch("/verifications/v1/accounts", {
-      method: "POST",
-      body: JSON.stringify({
-        country_code: "AE",
-        type: "PERSONAL",
-        account_details: { type: "IBAN", value: iban },
-        identifications: [{ type: "FULL_NAME", value: user.profileFullName }],
-      }),
-    });
-
-    const matching = result.verifications?.matching || {};
-    res.json({ matchType: matching.type || "NO_MATCH", score: matching.score ?? null });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }
