@@ -66,8 +66,6 @@ const store = {
   //   entityId, accountId, paymentSourceId, beneficiaryStatus,
   //   -- Data Only field (its own independent entity) --
   //   dataOnlyEntityId,
-  //   -- SIP Connect and Pay fields (its own independent entity, accounts+payments perms) --
-  //   sipCpEntityId, sipCpBankIdentifier, pendingEntityKind (transient, see entity.created handler),
   //   -- OF fields --
   //   consentId, consentStatus,
   //   -- shared --
@@ -94,13 +92,6 @@ function dataOnlyRefreshStatusFor(user) {
   return user.entityRefreshStatusByEntity?.[user.dataOnlyEntityId] || null;
 }
 
-// Same resolve-at-read-time pattern as dataOnlyRefreshStatusFor above, for
-// SIP Connect and Pay's independent entity.
-function sipCpRefreshStatusFor(user) {
-  if (!user.sipCpEntityId) return null;
-  return user.entityRefreshStatusByEntity?.[user.sipCpEntityId] || null;
-}
-
 // Single source of truth for "what does the frontend need to know about this
 // user" — used by both GET /api/status (one-shot, e.g. on page load) and the
 // SSE push (whenever a webhook updates something). Keeping this in one place
@@ -119,11 +110,6 @@ function buildStatusPayload(user) {
     // that GET /data/v2/* will actually return something; see the webhook
     // handler below and pollForDataOnlyEntity() on the frontend.
     dataOnlyRefreshStatus: dataOnlyRefreshStatusFor(user),
-    // SIP Connect and Pay fields — its own independent entity (accounts +
-    // payments permissions), never the same one as Data Only or Connect & Pay.
-    sipCpEntityId:         user.sipCpEntityId,
-    sipCpBankIdentifier:   user.sipCpBankIdentifier,
-    sipCpRefreshStatus:    sipCpRefreshStatusFor(user),
     // OF fields
     consentId:         user.consentId,
     consentStatus:     user.consentStatus,
@@ -319,7 +305,7 @@ app.post("/api/init", async (req, res) => {
       }
 
       // Start with a blank slate
-      user = { customerId, entityId: null, dataOnlyEntityId: null, sipCpEntityId: null, sipCpBankIdentifier: null, pendingEntityKind: null, entityRefreshStatusByEntity: {}, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
+      user = { customerId, entityId: null, dataOnlyEntityId: null, entityRefreshStatusByEntity: {}, accountId: null, tradingBalance: 0, payoutBalance: PAYOUT_STARTING_BALANCE, paymentSourceId: null, beneficiaryStatus: null, consentId: null, consentStatus: null, payments: [], payouts: [], schedules: [], refunds: [] };
       store[appUserId] = user;
 
       // After a restart recovery, try to restore entityId and paymentSourceId
@@ -328,38 +314,19 @@ app.post("/api/init", async (req, res) => {
         try {
           const entitiesResp = await leanFetch(`/customers/v1/${customerId}/entities`);
           const entities = Array.isArray(entitiesResp) ? entitiesResp : entitiesResp?.payload || [];
-          // A customer can now hold up to THREE entities — Connect & Pay's
-          // full-permission Lean.connect() call, Data Only's restricted
-          // call, and SIP Connect and Pay's accounts+payments call. Classify
-          // each by its permission set (see the same check in the
-          // entity.created webhook handler below) instead of assuming
-          // entities[0] is the one and only entity.
-          //
-          // Unlike the webhook handler, this can't rely on pendingEntityKind
-          // (in-memory only — wiped by the very restart this code path
-          // exists to recover from) to tell SIP-CP apart from Data Only, since
-          // both produce an identical flat permissions shape. Falls back to
-          // inspecting the entity's own consents[] instead: an entity created
-          // with "payments" permission carries a MULTI_PAYMENTS consent
-          // alongside its ACCOUNT_ACCESS one, which Data Only's never has.
-          // This costs an extra round trip per ambiguous entity, which is
-          // fine here (one-time cold start) but deliberately NOT how the
-          // hot webhook path classifies, per the comment there.
+          // A customer can now hold up to two entities — one from Connect &
+          // Pay's full-permission Lean.connect() call, one from Data Only's
+          // restricted call. Classify each by its permission set (see the
+          // same check in the entity.created webhook handler below) instead
+          // of assuming entities[0] is the one and only entity.
           for (const entity of entities) {
             const p = entity.permissions || {};
             const isFullAccess = p.beneficiaries || p.standing_orders || p.direct_debits || p.scheduled_payments;
-            if (isFullAccess) {
-              user.entityId = entity.id;
-            } else if ((entity.consents || []).some((c) => c.consent_type === "MULTI_PAYMENTS")) {
-              user.sipCpEntityId = entity.id;
-              user.sipCpBankIdentifier = entity.bank_identifier || null;
-            } else {
-              user.dataOnlyEntityId = entity.id;
-            }
+            if (isFullAccess) user.entityId = entity.id;
+            else user.dataOnlyEntityId = entity.id;
           }
           if (user.entityId) console.log(`[Init] Restored Connect & Pay entity_id ${user.entityId} from Lean API`);
           if (user.dataOnlyEntityId) console.log(`[Init] Restored Data Only entity_id ${user.dataOnlyEntityId} from Lean API`);
-          if (user.sipCpEntityId) console.log(`[Init] Restored SIP Connect and Pay entity_id ${user.sipCpEntityId} from Lean API`);
         } catch (e) {
           console.warn(`[Init] Could not restore entity_id:`, e.message);
         }
@@ -487,27 +454,6 @@ app.get("/api/balance", async (req, res) => {
 });
 
 /**
- * POST /api/sipcp/connect-init
- *
- * SIP Connect and Pay: called right before the frontend's Lean.connect()
- * for this flow. Tags the user record so the entity.created webhook that
- * follows can classify the resulting entity as sipCpEntityId instead of
- * falling into the existing Connect & Pay / Data Only two-way heuristic —
- * see the entity.created handler in POST /webhooks/lean for why a payload
- * heuristic alone can't tell this entity apart from Data Only's.
- *
- * Body: { appUserId }
- */
-app.post("/api/sipcp/connect-init", (req, res) => {
-  const { appUserId } = req.body;
-  const user = store[appUserId];
-  if (!user) return res.status(400).json({ error: "User not initialised" });
-
-  user.pendingEntityKind = { kind: "SIPCP", setAt: Date.now() };
-  res.json({ ok: true });
-});
-
-/**
  * POST /api/payment-intent
  * Creates a Payment Intent on Lean's backend, returns the payment_intent_id
  * so the frontend can call Lean.pay(payment_intent_id).
@@ -614,36 +560,10 @@ app.post("/webhooks/lean", (req, res) => {
       );
       if (entry) {
         const [foundAppUserId, user] = entry;
-
-        // SIP Connect and Pay entities are indistinguishable from Data Only's
-        // by permissions shape alone — Entity.permissions has no "payments"
-        // field (payment permission surfaces via a separate
-        // payment_source.created webhook instead), so an entity created with
-        // ["identity","accounts","balance","payments"] looks identical to
-        // Data Only's ["identity","accounts","balance","transactions"] one
-        // here. Disambiguate via explicit intent-tagging set by
-        // POST /api/sipcp/connect-init right before that flow's
-        // Lean.connect() call, instead of by payload heuristic. TTL'd so an
-        // abandoned/cancelled SIP-CP attempt can't poison a later, unrelated
-        // Data Only connect for the same user.
-        const pending = user.pendingEntityKind;
-        if (pending?.kind === "SIPCP" && Date.now() - pending.setAt < 120_000) {
-          user.sipCpEntityId = entityId;
-          user.pendingEntityKind = null;
-          touchedAppUserId = foundAppUserId;
-          console.log(`[Webhook] Stored SIP Connect and Pay entity_id ${entityId} for customer ${customer_id}`);
-          // bank_identifier is needed later to pre-select the bank in
-          // Lean.pay() — capture it server-side now rather than trusting a
-          // frontend JS variable to survive the bank redirect's page reload
-          // (this app has already been burned by exactly that class of bug,
-          // see the captureRedirect() param-capture note further below).
-          leanFetch(`/customers/v1/${customer_id}/entities/${entityId}`)
-            .then((entity) => {
-              user.sipCpBankIdentifier = entity.bank_identifier || null;
-              pushStatusUpdate(foundAppUserId);
-            })
-            .catch((e) => console.warn(`[Webhook] Could not fetch bank_identifier for SIP-CP entity ${entityId}:`, e.message));
-        } else if (Array.isArray(permissions)) {
+        // A customer can now produce TWO entities that both land here with
+        // the same customer_id — Connect & Pay's full-permission
+        // Lean.connect() call, and Data Only's restricted one.
+        if (Array.isArray(permissions)) {
           // entity.created's own payload already carries the permissions
           // array requested for this entity (confirmed against a real
           // payload) — classify synchronously from it. This used to always
@@ -1720,63 +1640,6 @@ app.get("/api/dataonly/accounts", async (req, res) => {
   }
 });
 
-/**
- * GET /api/sipcp/accounts?appUserId=xxx
- *
- * SIP Connect and Pay: the connected account's details (IBAN, holder name,
- * bank, balance) — shown to confirm what will be charged before the SIP
- * pay step, and the source of account_id fed into Lean.pay() to pre-select
- * the account (see server.js's rail comment at the top of this file for how
- * this differs from the RE/Connect & Pay and SIP/checkout() rails).
- * Modeled directly on GET /api/dataonly/accounts above, minus the
- * identity/transactions fetches that route needs and this one doesn't.
- */
-app.get("/api/sipcp/accounts", async (req, res) => {
-  try {
-    const { appUserId } = req.query;
-    const user = store[appUserId];
-    if (!user?.sipCpEntityId) return res.status(400).json({ error: "No SIP Connect and Pay bank linked for this user" });
-
-    const accountsResp = await leanFetch(`/data/v2/accounts?entity_id=${user.sipCpEntityId}`);
-    if (accountsResp.status !== "OK") {
-      return res.status(502).json({ error: "Could not fetch accounts", detail: accountsResp });
-    }
-
-    const accounts = accountsResp.data?.accounts || [];
-    if (!accounts.length) return res.status(404).json({ error: "No accounts found" });
-
-    const enriched = await Promise.all(accounts.map(async (account) => {
-      const ibanEntry = account.account?.find(a => a.scheme_name === "IBAN");
-      let amount = null, currency = null;
-      try {
-        const balResp = await leanFetch(
-          `/data/v2/accounts/${account.account_id}/balances?entity_id=${user.sipCpEntityId}`,
-          { silent: true },
-        );
-        const balances = balResp.data?.balances || [];
-        const preferred = balances.find(b => b.type === "INTERIM_AVAILABLE")
-                       || balances.find(b => b.type === "CLOSING_AVAILABLE")
-                       || balances[0];
-        if (preferred) { amount = preferred.amount.amount; currency = preferred.amount.currency; }
-      } catch (e) {
-        console.warn(`[SIP Connect and Pay] Could not fetch balance for account ${account.account_id}:`, e.message);
-      }
-      return {
-        accountId:         account.account_id,
-        bankName:          account.nickname || account.account_sub_type || account.account_type || "Account",
-        accountHolderName: account.account_holder_name || null,
-        iban:              ibanEntry?.identification || null,
-        amount,
-        currency,
-      };
-    }));
-
-    res.json({ bankIdentifier: user.sipCpBankIdentifier, accounts: enriched });
-  } catch (err) {
-    res.status(err.status || 500).json({ error: err.message, detail: err.body });
-  }
-});
-
 // ═══════════════════════════════════════════════════════════════════════════
 // INSIGHTS ROUTES
 //
@@ -2684,41 +2547,6 @@ app.delete("/api/dev/reset", async (req, res) => {
         console.warn(`[User Reset] Could not delete Data Only entity on Lean's side:`, err.body || err.message);
       }
     }
-    if (user.sipCpEntityId) {
-      try {
-        await leanFetch(`/customers/v1/${user.customerId}/entities/${user.sipCpEntityId}`, {
-          method: "DELETE",
-          body: JSON.stringify({ reason: "USER_REQUESTED" }),
-        });
-        entityDeleted = true;
-        console.log(`[User Reset] Deleted SIP Connect and Pay entity ${user.sipCpEntityId} for customer ${user.customerId}`);
-      } catch (err) {
-        console.warn(`[User Reset] Could not delete SIP Connect and Pay entity on Lean's side:`, err.body || err.message);
-      }
-    }
-
-    // Delete payment source if one exists. Needed because ANY connect() call
-    // that requests "payments" permission (Connect & Pay's or SIP Connect
-    // and Pay's) creates/updates the SAME customer-scoped payment_source —
-    // the payment_source.beneficiary.created/updated webhook that reports it
-    // is keyed only by customer_id, with no way to tell which card triggered
-    // it. Without deleting it here, POST /api/init's restart-recovery block
-    // would just silently restore the stale paymentSourceId from Lean's side
-    // on the next init call, defeating the whole point of resetting between
-    // testing different integration cards for the same appUserId.
-    let paymentSourceDeleted = false;
-    if (user.paymentSourceId) {
-      try {
-        await leanFetch(`/customers/v1/${user.customerId}/payment-sources/${user.paymentSourceId}`, {
-          method: "DELETE",
-          body: JSON.stringify({ reason: "USER_REQUESTED" }),
-        });
-        paymentSourceDeleted = true;
-        console.log(`[User Reset] Deleted payment source ${user.paymentSourceId} for customer ${user.customerId}`);
-      } catch (err) {
-        console.warn(`[User Reset] Could not delete payment source on Lean's side:`, err.body || err.message);
-      }
-    }
 
     // Revoke OF consent if one exists
     let consentRevoked = false;
@@ -2737,7 +2565,7 @@ app.delete("/api/dev/reset", async (req, res) => {
 
     delete store[appUserId];
     console.log(`[User Reset] Cleared local record for ${appUserId}`);
-    res.json({ cleared: true, entityDeleted, paymentSourceDeleted, consentRevoked, appUserId });
+    res.json({ cleared: true, entityDeleted, consentRevoked, appUserId });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message, detail: err.body });
   }

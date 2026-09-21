@@ -785,11 +785,6 @@ body.phone-widget-active #lean-sdk-iframe {
       <div class="card-title">Link a bank, then deposit</div>
       <div class="card-subtitle">Lean.connect() links the bank and grants payment permission in one go; Lean.pay() then deposits — both on the same screen.</div>
     </div>
-    <div class="card integration-card" onclick="openIntegrationDemo('SIPCP')">
-      <div class="card-eyebrow">SIP Connect &amp; Pay</div>
-      <div class="card-title">Connect a bank, then pay via SIP</div>
-      <div class="card-subtitle">Lean.connect() links the bank and retrieves the account; Lean.pay() then takes a Single Instant Payment against that same account, skipping bank re-selection.</div>
-    </div>
     <div class="card integration-card" onclick="openIntegrationDemo('DATAONLY')">
       <div class="card-eyebrow">Data Only</div>
       <div class="card-title">Connect for data, no payments</div>
@@ -869,61 +864,6 @@ body.phone-widget-active #lean-sdk-iframe {
       </div>
     </div>
     <div class="flow-diagram-svg-wrap" id="diagram-CONNECTPAY"></div>
-  </div>
-  </div>
-
-  <!-- SIP Connect & Pay -->
-  <div class="flow-diagram-layout integration-demo" id="demo-SIPCP" style="display:none;">
-  <div class="col-stack">
-    <div class="card" id="sipcp-unlinked">
-      <div class="card-eyebrow">SIP Connect &amp; Pay</div>
-      <div class="card-title">Connect your bank</div>
-      <div class="card-subtitle">Log in to your bank inside the app. We'll retrieve your account details, then use them to pre-select your bank for the payment — no need to pick it again.</div>
-      <div class="connect-area">
-        <div class="connect-icon">&#128273;</div>
-        <button class="btn btn-primary" id="btn-link-sipcp" onclick="startLinkSipCp()" style="width:100%;max-width:280px;">Connect bank</button>
-      </div>
-      <p class="status-msg" id="status-sipcp-link"></p>
-    </div>
-
-    <div class="card" id="sipcp-linked" style="display:none;">
-      <div class="identity-card" id="sipcp-identity-card" style="display:none;">
-        <div class="identity-avatar">&#128100;</div>
-        <div><div class="identity-name" id="sipcp-identity-name">—</div><div class="identity-iban" id="sipcp-identity-iban"></div></div>
-      </div>
-      <div class="balance-card">
-        <div class="balance-label"><span id="sipcp-bank-name">Your bank</span><span class="live-dot">Live</span></div>
-        <div class="balance-amount"><span class="currency">AED</span><span id="sipcp-balance-val">—</span></div>
-      </div>
-      <div>
-        <div class="section-label">Payment amount</div>
-        <div class="quick-amounts">
-          <button class="quick-btn" onclick="setSipCpAmount(100)">AED 100</button>
-          <button class="quick-btn" onclick="setSipCpAmount(500)">AED 500</button>
-          <button class="quick-btn" onclick="setSipCpAmount(1000)">AED 1,000</button>
-        </div>
-        <div class="input-wrap">
-          <div class="input-prefix">AED</div>
-          <input type="number" id="sipcp-amount" placeholder="0.00" min="1" step="any" />
-        </div>
-        <div class="section-label">Reference <span style="text-transform:none; font-weight:400;">(optional)</span></div>
-        <div class="input-wrap" style="margin-bottom:12px;">
-          <input type="text" id="sipcp-reference" placeholder="e.g. Trading top-up" class="text-field" />
-        </div>
-        <button class="btn btn-primary" id="btn-sipcp-pay" onclick="handleSipCpPay()">Pay via SIP</button>
-        <p class="status-msg" id="status-sipcp"></p>
-      </div>
-    </div>
-  </div>
-  <div class="card flow-diagram-panel">
-    <div class="flow-diagram-panel-header">
-      <div class="card-eyebrow">SIP Connect &amp; Pay — Flow Breakdown</div>
-      <div class="flow-diagram-panel-actions">
-        <button class="btn btn-secondary btn-sm" onclick="openDiagramImageModal('SIPCP')">Open</button>
-      <a class="btn btn-secondary btn-sm" href="https://docs.leantech.me/docs/getting-started-with-single-instant-payments" target="_blank" rel="noopener">Docs</a>
-      </div>
-    </div>
-    <div class="flow-diagram-svg-wrap" id="diagram-SIPCP"></div>
   </div>
   </div>
 
@@ -1590,7 +1530,7 @@ body.phone-widget-active #lean-sdk-iframe {
     <path d="M12 2L21 7V17L12 22L3 17V7L12 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
     <path d="M12 8.5L15.5 10.5V14.5L12 16.5L8.5 14.5V10.5L12 8.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
   </svg>
-  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.6
+  Powered by <a href="https://leantech.me" target="_blank">Lean Technologies</a> &middot; Open Banking &middot; Bank-grade security &middot; v1.2.5
 </footer>
 <div class="floating-actions-right">
   <button class="mobile-app-fab" onclick="openMobileApp()">&#128241; Mobile App</button>
@@ -2368,17 +2308,6 @@ let paymentSourceId   = null;
 let beneficiaryStatus = null;
 // Data Only field — its own independent entity, never the same one as above
 let dataOnlyEntityId    = null;
-// SIP Connect and Pay fields — its own independent entity (accounts +
-// payments permissions), never the same one as Data Only or Connect & Pay.
-// sipCpAccountId/sipCpBankIdentifier are what pre-select the bank/account in
-// the follow-up Lean.pay() call — bankIdentifier is server-authoritative
-// (see server.js's entity.created handler), read off the status payload
-// rather than trusted from the connect() callback alone.
-let sipCpEntityId       = null;
-let sipCpBankIdentifier = null;
-let sipCpAccountId      = null;
-let sipCpBankBalance    = null;
-let sipCpBankName       = null;
 // Set once loadDataOnlyAccounts() reads it — used only to pre-fill the
 // Insights name-verification field, purely a demo-UX convenience.
 let dataOnlyIdentityName = null;
@@ -2477,7 +2406,6 @@ function setLoading(btnId, loading, label = "Deposit funds") {
 
 function setCpAmount(val)  { document.getElementById("cp-deposit-amount").value  = val; }
 function setAofAmount(val) { document.getElementById("aof-deposit-amount").value = val; }
-function setSipCpAmount(val) { document.getElementById("sipcp-amount").value = val; }
 
 // ─── PAGE NAVIGATION ────────────────────────────────────────────────────────
 // Groups add a level ABOVE the existing flat pages rather than restructuring
@@ -2916,15 +2844,6 @@ function applyLiveStatus(data) {
     setLoading("btn-link-do", false, "Connect for data");
     renderDataOnlyCard();
   }
-  // Same late-arrival recovery as Data Only above, for SIP Connect and Pay's
-  // independent entity.created + entity.data.refresh.updated pair.
-  if (data.sipCpEntityId && data.sipCpRefreshStatus === "FINISHED" && !sipCpEntityId) {
-    sipCpEntityId       = data.sipCpEntityId;
-    sipCpBankIdentifier = data.sipCpBankIdentifier;
-    setStatusEl("status-sipcp-link", "");
-    setLoading("btn-link-sipcp", false, "Connect bank");
-    renderSipCpCard();
-  }
   if (currentPage === "PAYOUT") renderPayoutTab();
   if (currentPage === "REFUND") renderRefundList();
 }
@@ -2988,85 +2907,6 @@ function pollForConnectPayEntity() {
       setStatusEl("status-cp-link", "Webhook took too long — try refreshing the page.", "error");
       setLoading("btn-link-cp", false, "Connect bank");
     },
-  );
-}
-
-// ── SIP Connect and Pay: Lean.connect() (accounts+payments), then Lean.pay()
-// against a SIP payment_intent, pre-selecting the connected bank/account ──
-async function startLinkSipCp() {
-  if (!customerId) { setStatusEl("status-sipcp-link", "Still initialising — please wait a moment.", "error"); return; }
-  if (!accessToken) { setStatusEl("status-sipcp-link", "Session not ready. Refresh and try again.", "error"); return; }
-
-  setLoading("btn-link-sipcp", true, "Connect bank");
-  setStatusEl("status-sipcp-link", "Opening your bank connection…");
-
-  try {
-    // Tags this user's next entity.created webhook as belonging to this
-    // flow — see server.js for why a permissions-shape heuristic alone
-    // can't tell this entity apart from Data Only's.
-    await fetch(`${BACKEND}/api/sipcp/connect-init`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ appUserId }),
-    });
-  } catch (err) {
-    setStatusEl("status-sipcp-link", "Could not start linking — try again.", "error");
-    setLoading("btn-link-sipcp", false, "Connect bank");
-    return;
-  }
-
-  callLeanSdk("Lean.connect() — SIP Connect and Pay bank link", Lean.connect.bind(Lean), {
-    app_token:              APP_TOKEN,
-    customer_id:            customerId,
-    permissions:            ["identity", "accounts", "balance", "payments"],
-    payment_destination_id: PAYMENT_DESTINATION_ID,
-    access_token:           accessToken,
-    sandbox:                true,
-
-    callback: async (payload) => {
-      console.log("[Lean.connect] SIP Connect and Pay callback payload:", payload);
-      if (payload.status === "SUCCESS") {
-        setStatusEl("status-sipcp-link", "Bank linked! Finalizing…", "ok");
-        await pollForSipCpEntity();
-      } else if (payload.status === "CANCELLED") {
-        setStatusEl("status-sipcp-link", "Bank linking cancelled.");
-        setLoading("btn-link-sipcp", false, "Connect bank");
-      } else {
-        setStatusEl("status-sipcp-link", `Connection failed: ${payload.message || payload.status}`, "error");
-        setLoading("btn-link-sipcp", false, "Connect bank");
-      }
-    },
-  });
-}
-
-function pollForSipCpEntity() {
-  waitForStatus(
-    (data) => !!data.sipCpEntityId,
-    (data) => {
-      sipCpEntityId = data.sipCpEntityId;
-      setStatusEl("status-sipcp-link", "Bank linked! Fetching your account…", "ok");
-      pollForSipCpRefresh();
-    },
-    () => {
-      setStatusEl("status-sipcp-link", "Webhook took too long — try refreshing the page.", "error");
-      setLoading("btn-link-sipcp", false, "Connect bank");
-    },
-  );
-}
-
-function pollForSipCpRefresh() {
-  waitForStatus(
-    (data) => data.sipCpRefreshStatus === "FINISHED",
-    (data) => {
-      sipCpBankIdentifier = data.sipCpBankIdentifier;
-      setStatusEl("status-sipcp-link", "");
-      renderSipCpCard();
-    },
-    () => {
-      setStatusEl("status-sipcp-link", "Still fetching your account — try refreshing the page in a moment.", "error");
-      setLoading("btn-link-sipcp", false, "Connect bank");
-    },
-    60000,
   );
 }
 
@@ -3228,23 +3068,6 @@ function renderConnectPayCard() {
   else renderConnectPayBalanceDisplay();
 }
 
-function renderSipCpCard() {
-  const unlinked = document.getElementById("sipcp-unlinked");
-  const linkedEl = document.getElementById("sipcp-linked");
-
-  // Checked directly against sipCpEntityId — its own independent entity,
-  // never shared with Connect & Pay's entityId or Data Only's.
-  if (!sipCpEntityId) {
-    unlinked.style.display = "block";
-    linkedEl.style.display = "none";
-    return;
-  }
-  unlinked.style.display = "none";
-  linkedEl.style.display = "block";
-  if (sipCpAccountId === null) fetchSipCpAccount();
-  else renderSipCpBalanceDisplay();
-}
-
 function renderDataOnlyCard() {
   const unlinked = document.getElementById("do-unlinked");
   const linkedEl = document.getElementById("do-linked");
@@ -3334,40 +3157,6 @@ async function fetchConnectPayBalance() {
   } catch (err) {
     setStatus("cp", `Couldn't load balance: ${err.message}`, "error");
     console.error("Balance error:", err);
-  }
-}
-
-function renderSipCpBalanceDisplay() {
-  const nameEl = document.getElementById("sipcp-bank-name");
-  const valEl  = document.getElementById("sipcp-balance-val");
-  if (nameEl) nameEl.textContent = sipCpBankName || "Your bank";
-  if (valEl)  valEl.textContent  = sipCpBankBalance !== null ? "•••••" : "—";
-}
-
-// SIP Connect and Pay — fetches the connected account's details (first
-// account only, matching Connect & Pay's single-account-focused card) and
-// stashes accountId for the follow-up Lean.pay() call to pre-select it.
-async function fetchSipCpAccount() {
-  setStatus("sipcp", "Fetching your account details…");
-  try {
-    const res  = await fetch(`${BACKEND}/api/sipcp/accounts?appUserId=${appUserId}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Account fetch failed");
-
-    const account = (data.accounts || [])[0];
-    if (!account) throw new Error("No accounts found");
-
-    sipCpAccountId   = account.accountId;
-    sipCpBankBalance = account.amount;
-    sipCpBankName    = account.bankName;
-    renderSipCpBalanceDisplay();
-
-    if (account.accountHolderName) showIdentity(account.accountHolderName, account.iban, "sipcp");
-
-    setStatus("sipcp", "");
-  } catch (err) {
-    setStatus("sipcp", `Couldn't load account: ${err.message}`, "error");
-    console.error("SIP Connect and Pay account error:", err);
   }
 }
 
@@ -3909,77 +3698,6 @@ async function depositViaConnectPay(amount, reference) {
   }
 }
 
-function handleSipCpPay() {
-  const amount = parseFloat(document.getElementById("sipcp-amount").value);
-  if (!amount || amount <= 0) { setStatus("sipcp", "Enter an amount to continue.", "error"); return; }
-  if (sipCpBankBalance !== null && amount > sipCpBankBalance) {
-    setStatus("sipcp", "Amount exceeds your available bank balance.", "error");
-    return;
-  }
-  const reference = document.getElementById("sipcp-reference").value.trim();
-  setStatus("sipcp", "");
-  depositViaSipCp(amount, reference);
-}
-
-// SIP Connect and Pay — same SIP payment-intent creation as the standalone
-// SIP tab, but Lean.pay() (not Lean.checkout()) with account_id/
-// bank_identifier from the connect step, pre-selecting the bank so the
-// customer isn't asked to choose it again. pay() resolves via the ordinary
-// same-page callback (like Connect & Pay's own pay() call below) rather than
-// checkout()'s query-param redirect-and-resume mechanism, so no special
-// return handler is needed here.
-async function depositViaSipCp(amount, reference) {
-  if (!sipCpAccountId) {
-    setStatus("sipcp", "Account details not loaded yet — try refreshing the page.", "error");
-    return;
-  }
-
-  setLoading("btn-sipcp-pay", true, "Pay via SIP");
-  setStatus("sipcp", "Creating payment intent…");
-
-  try {
-    const intentRes = await fetch(`${BACKEND}/api/sip/payment-intent`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ appUserId, amount, currency: "AED", reference: reference || undefined }),
-    });
-    const intentData = await intentRes.json();
-    if (!intentRes.ok) throw new Error(intentData.error || "Payment intent failed");
-    if (intentData.accessToken) accessToken = intentData.accessToken;
-
-    setStatus("sipcp", "Opening bank authorisation…");
-
-    callLeanSdk("Lean.pay() — SIP Connect and Pay", Lean.pay.bind(Lean), {
-      app_token:            APP_TOKEN,
-      payment_intent_id:    intentData.paymentIntentId,
-      account_id:           sipCpAccountId,
-      bank_identifier:      sipCpBankIdentifier,
-      access_token:         accessToken,
-      sandbox:              true,
-      success_redirect_url: window.location.origin + window.location.pathname,
-      fail_redirect_url:    window.location.origin + window.location.pathname,
-      risk_details: { transaction_indicators: { channel: "WEB" } },
-
-      callback: (payload) => {
-        console.log("[Lean.pay] SIP Connect and Pay callback:", payload);
-        if (payload.status === "SUCCESS" || payload.status === "PENDING") {
-          showDepositSuccess(amount, "SIPCP");
-        } else if (payload.status === "CANCELLED") {
-          setStatus("sipcp", "Payment cancelled.");
-          setLoading("btn-sipcp-pay", false, "Pay via SIP");
-        } else {
-          setStatus("sipcp", `Payment failed: ${payload.message || payload.status}`, "error");
-          setLoading("btn-sipcp-pay", false, "Pay via SIP");
-        }
-      },
-    });
-  } catch (err) {
-    setStatus("sipcp", `Error: ${err.message}`, "error");
-    setLoading("btn-sipcp-pay", false, "Pay via SIP");
-    console.error("[SIP Connect and Pay] Error:", err);
-  }
-}
-
 // AOF deposit — direct backend call, no SDK needed (consent already authorized on Home)
 async function handleDepositOF(amount, reference) {
   if (!consentId || consentStatus !== "AUTHORISED") {
@@ -4412,12 +4130,11 @@ function openIntegrationDemo(demo) {
 
   document.getElementById("integrations-grid").style.display = "none";
   document.getElementById("integrations-detail").style.display = "block";
-  ["CONNECTPAY", "SIPCP", "DATAONLY", "SIPAOF"].forEach(d => {
+  ["CONNECTPAY", "DATAONLY", "SIPAOF"].forEach(d => {
     document.getElementById("demo-" + d).style.display = d === demo ? "grid" : "none";
   });
 
   if (demo === "CONNECTPAY") renderConnectPayCard();
-  if (demo === "SIPCP")      renderSipCpCard();
   if (demo === "DATAONLY")   renderDataOnlyCard();
   if (demo === "SIPAOF")     renderSipAofCard();
   renderFlowDiagram(demo);
@@ -4597,32 +4314,6 @@ const INTEGRATION_DIAGRAMS = {
       { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
       { type: "banner", text: "5) Receive real-time payment status updates" },
       { type: "return", from: 4, to: 3, label: "Webhook: payment.created" },
-    ],
-  },
-  SIPCP: {
-    title: "SIP Connect & Pay — Flow Breakdown",
-    steps: [
-      { type: "banner", text: "1) Connect the bank and retrieve its account details" },
-      { type: "call",   from: 1, to: 2, label: "connect({ permissions: [identity, accounts, balance, payments] })" },
-      { type: "return", from: 2, to: 0, label: "Show bank selection" },
-      { type: "banner", text: "Customer logs in to their bank inside the widget" },
-      { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
-      { type: "banner", text: "2) Lean confirms the new entity — backend also captures bank_identifier" },
-      { type: "return", from: 4, to: 3, label: "Webhook: entity.created" },
-      { type: "call",   from: 3, to: 4, label: "GET entities/{id} (fetch bank_identifier)" },
-      { type: "banner", text: "3) Fetch the connected account's details" },
-      { type: "call",   from: 3, to: 4, label: "GET /data/v2/accounts?entity_id=..." },
-      { type: "return", from: 4, to: 3, label: "IBAN, holder name, account_id" },
-      { type: "return", from: 3, to: 1, label: "Show connected account" },
-      { type: "banner", text: "4) Create a SIP payment intent for the amount entered" },
-      { type: "call",   from: 3, to: 4, label: "POST /payments/v1/intents" },
-      { type: "return", from: 4, to: 3, label: "201 Created (payment_intent_id)" },
-      { type: "return", from: 3, to: 1, label: "Return payment_intent_id" },
-      { type: "banner", text: "5) Launch LinkSDK to authorise the SIP payment — bank pre-selected" },
-      { type: "call",   from: 1, to: 2, label: "pay({ payment_intent_id, account_id, bank_identifier })" },
-      { type: "return", from: 2, to: 1, label: "callback(status: SUCCESS)" },
-      { type: "banner", text: "6) Receive real-time payment status updates" },
-      { type: "return", from: 4, to: 3, label: "Webhook: payment.updated" },
     ],
   },
   DATAONLY: {
@@ -4836,7 +4527,6 @@ function renderFlowDiagram(demo) {
 // markup) — kept here too so the image modal can link back to the source.
 const DOCS_URLS = {
   CONNECTPAY: "https://docs.leantech.me/docs/creating-a-payment-source",
-  SIPCP:      "https://docs.leantech.me/docs/getting-started-with-single-instant-payments",
   DATAONLY:   "https://docs.leantech.me/v2.0-UAE/docs/getting-started-with-data",
   AOF:        "https://docs.leantech.me/docs/getting-started-with-account-in-file-payments",
   SIPAOF:     "https://docs.leantech.me/docs/getting-started-with-account-in-file-payments",
@@ -4964,9 +4654,8 @@ function initDiagramInteractions() {
 initDiagramInteractions();
 
 const DEPOSIT_TABS = {
-  CP:    { amountInput: "cp-deposit-amount",  referenceInput: "cp-reference",  btn: "btn-cp-deposit",  statusKey: "cp" },
-  AOF:   { amountInput: "aof-deposit-amount", referenceInput: "aof-reference", btn: "btn-aof-deposit", statusKey: "aof" },
-  SIPCP: { amountInput: "sipcp-amount",       referenceInput: "sipcp-reference", btn: "btn-sipcp-pay", statusKey: "sipcp" },
+  CP:  { amountInput: "cp-deposit-amount",  referenceInput: "cp-reference",  btn: "btn-cp-deposit",  statusKey: "cp" },
+  AOF: { amountInput: "aof-deposit-amount", referenceInput: "aof-reference", btn: "btn-aof-deposit", statusKey: "aof" },
 };
 
 // Shows the shared payment-success popup over whatever screen just finished
